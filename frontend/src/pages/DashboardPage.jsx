@@ -1,8 +1,9 @@
+import { useFines } from "../services/useFines.js";
 import { AlertCircle, ArrowRight, CircleDollarSign, Clock3, FileText, RotateCcw, } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ReasonsChart, StatusAmountChart, StatusDistribution, TrendChart, } from "../components/charts.jsx";
 import { Button, Card, EmptyState, Select } from "../components/ui.jsx";
-import { reasons } from "../data/mockData.js";
+
 import { filterFines, last12Months, money } from "../utils/fines.js";
 export function DashboardPage({ records, onNavigateFines, }) {
     const defaults = {
@@ -17,10 +18,12 @@ export function DashboardPage({ records, onNavigateFines, }) {
         setFilters(defaults);
         setDatePreset("12");
     };
-    const filtered = useMemo(() => filterFines(records, filters), [records, filters]);
+    const remote = useFines(filters, records);
+    const filtered = useMemo(() => filterFines(remote.rows, filters), [remote.rows, filters]);
     const pending = filtered.filter((f) => f.status === "Pending");
     const totalAmount = filtered.reduce((sum, f) => sum + f.fineAmount, 0);
     const pendingAmount = pending.reduce((sum, f) => sum + f.fineAmount, 0);
+    const reasons = [...new Set(records.map(f => f.reasonCategory))];
     const customers = Array.from(new Map(records.map((f) => [f.customerId, f.customerName])));
     const updatePreset = (preset) => {
         const to = new Date();
@@ -40,6 +43,8 @@ export function DashboardPage({ records, onNavigateFines, }) {
         }));
     };
     return (<>
+      {remote.loading && <p role="status">Loading records…</p>}
+      {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. Use Refresh or change a filter to retry.</p>}
       <Card className="filter-bar sticky-filters">
         <Select label="Fine date" value={datePreset} onChange={(e) => {
             setDatePreset(e.target.value);
@@ -65,6 +70,9 @@ export function DashboardPage({ records, onNavigateFines, }) {
               {name}
             </option>))}
         </Select>
+        <Select label="Operational area" value={filters.sourceArea || ""} onChange={e => setFilters(f => ({ ...f, sourceArea: e.target.value || undefined }))}>
+          <option value="">All areas</option><option>Logistics</option><option>Warehouse</option><option>Manufacturing</option>
+        </Select>
         <Select label="Fine reason" value={filters.reasons[0] ?? ""} onChange={(e) => setFilters({
             ...filters,
             reasons: e.target.value ? [e.target.value] : [],
@@ -79,12 +87,14 @@ export function DashboardPage({ records, onNavigateFines, }) {
       </Card>
       <div className="kpi-grid">
         <Kpi icon={<FileText />} label="Total Fines" value={filtered.length.toLocaleString()} detail="Fine cases in the selected period"/>
-        <Kpi icon={<CircleDollarSign />} label="Total Fine Amount" value={money(totalAmount)} detail="Gross recorded amount · USD"/>
+        <Kpi icon={<CircleDollarSign />} label="Total Deductions" value={money(totalAmount)} detail="Gross recorded amount · INR"/>
         <button className="kpi-button" onClick={() => onNavigateFines({ ...filters, status: "Pending" })}>
           <Kpi icon={<Clock3 />} label="Pending Cases" value={pending.length.toLocaleString()} detail="Awaiting manual review" arrow/>
         </button>
         <Kpi icon={<AlertCircle />} label="Pending Amount" value={money(pendingAmount)} detail="Amount associated with unresolved cases"/>
       </div>
+      <div className="source-grid">{["Logistics", "Warehouse", "Manufacturing"].map(source => <button key={source} onClick={() => onNavigateFines({ ...filters, sourceArea: source })}><span>{source}</span><strong>{money(filtered.filter(f => f.sourceArea === source).reduce((sum, f) => sum + f.fineAmount, 0))}</strong><small>Recorded deductions →</small></button>)}</div>
+      <div className="queue-banner"><div><strong>Pending review queue</strong><p>Resolve missing evidence with a comment and a traceable decision.</p></div><Button variant="secondary" onClick={() => onNavigateFines({ ...filters, status: 'Pending' })}>Review {pending.length} pending cases</Button></div>
       {!filtered.length ? (<Card>
           <EmptyState action={<Button onClick={resetFilters}>
                 Clear filters

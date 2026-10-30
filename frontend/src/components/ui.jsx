@@ -42,7 +42,7 @@ export function Toast({ message, type = "success", onClose, }) {
 export function LoadingPage() {
     return (<div className="loading-page" role="status" aria-label="Loading fine records">
       <LoaderCircle className="spin" size={28}/>
-      <p>Loading demo data…</p>
+      <p>Loading fine records…</p>
       <div className="skeleton-grid">
         {[1, 2, 3, 4].map((x) => (<div className="skeleton" key={x}/>))}
       </div>

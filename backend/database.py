@@ -1,60 +1,25 @@
-
+"""SQLite for local development; SQL Server through DATABASE_URL or DB_* settings."""
 import os
 from urllib.parse import quote_plus
-
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
-
-server = os.getenv("DB_SERVER")
-database = os.getenv("DB_NAME")
-username = os.getenv("DB_USERNAME")
-password = os.getenv("DB_PASSWORD")
-driver = os.getenv(
-    "DB_DRIVER",
-    "ODBC Driver 18 for SQL Server"
-)
-trust_cert = os.getenv("DB_TRUST_CERTIFICATE", "no")
-
-if not all([server, database, username, password]):
-    raise RuntimeError(
-        "Missing database settings. Check your backend/.env file."
-    )
-
-connection_string = (
-    f"DRIVER={{{driver}}};"
-    f"SERVER={server};"
-    f"DATABASE={database};"
-    f"UID={username};"
-    f"PWD={password};"
-    "Encrypt=yes;"
-    f"TrustServerCertificate={trust_cert};"
-)
-
-database_url = (
-    "mssql+pyodbc:///?odbc_connect="
-    + quote_plus(connection_string)
-)
-
-engine = create_engine(
-    database_url,
-    pool_pre_ping=True
-)
-
-SessionLocal = sessionmaker(
-    bind=engine,
-    autoflush=False,
-    autocommit=False
-)
-
+url = os.getenv('DATABASE_URL')
+if not url and os.getenv('DB_SERVER'):
+    required = ['DB_SERVER', 'DB_NAME', 'DB_USERNAME', 'DB_PASSWORD']
+    if any(not os.getenv(key) for key in required):
+        raise RuntimeError('Set all DB_SERVER, DB_NAME, DB_USERNAME and DB_PASSWORD settings')
+    connection = (f"DRIVER={{{os.getenv('DB_DRIVER', 'ODBC Driver 18 for SQL Server')}}};"
+                  f"SERVER={os.environ['DB_SERVER']};DATABASE={os.environ['DB_NAME']};"
+                  f"UID={os.environ['DB_USERNAME']};PWD={os.environ['DB_PASSWORD']};"
+                  f"Encrypt=yes;TrustServerCertificate={os.getenv('DB_TRUST_CERTIFICATE', 'no')};")
+    url = 'mssql+pyodbc:///?odbc_connect=' + quote_plus(connection)
+url = url or 'sqlite:///./fines.db'
+engine = create_engine(url, pool_pre_ping=True, connect_args={'check_same_thread': False} if url.startswith('sqlite') else {})
+SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 Base = declarative_base()
-
-
 def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    with SessionLocal() as session:
+        yield session

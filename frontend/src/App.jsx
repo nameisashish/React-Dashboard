@@ -8,6 +8,8 @@ import { FinesDetailsPage } from "./pages/FinesDetailsPage.jsx";
 import { LoginPage } from "./pages/LoginPage.jsx";
 import { SignUpPage } from "./pages/SignUpPage.jsx";
 import { shortDate } from "./utils/fines.js";
+import { authService } from "./services/authService.js";
+import { ImportPage } from "./pages/ImportPage.jsx";
 import { can } from "./services/permissions.js";
 export default function App() {
     const [user, setUser] = useState(null);
@@ -23,7 +25,15 @@ export default function App() {
     const [exportState, setExportState] = useState(null);
     const [toast, setToast] = useState(null);
     useEffect(() => {
+        const expired = () => { setUser(null); setRecords([]); setAuthNotice("Your session expired. Please sign in again."); };
+        window.addEventListener('session-expired', expired);
+        if (sessionStorage.getItem('fines-token')) authService.me().then(setUser).catch(expired);
+        return () => window.removeEventListener('session-expired', expired);
+    }, []);
+    useEffect(() => {
+        if (!user) return;
         let active = true;
+        setLoading(true);
         finesService.list()
             .then((data) => {
                 if (!active) return;
@@ -42,7 +52,7 @@ export default function App() {
         return () => {
             active = false;
         };
-    }, []);
+    }, [user]);
     useEffect(() => {
         let active = true;
         if (!selected) {
@@ -74,7 +84,7 @@ export default function App() {
         try {
             const data = await finesService.refresh();
             setRecords(data);
-            setToast({ message: "Demo data refreshed." });
+            setToast({ message: "Records refreshed from the server." });
         }
         catch {
             setToast({
@@ -109,26 +119,12 @@ export default function App() {
     const exportWorkbook = async () => {
         if (!exportState)
             return;
-        const XLSX = await import("xlsx");
-        const rows = exportState.records.map((fine) => ({
-            "Fine ID": fine.fineId,
-            "Customer ID": fine.customerId,
-            Customer: fine.customerName,
-            "Order Reference": fine.orderReference,
-            "Fine Date": new Date(fine.fineDate),
-            "Fine Amount": fine.fineAmount,
-            Currency: fine.currencyCode,
-            "Fine Reason": fine.reasonCategory,
-            Status: fine.status,
-            "Updated At": new Date(fine.updatedAt),
-        }));
-        const sheet = XLSX.utils.json_to_sheet(rows, { cellDates: true });
-        sheet["!cols"] = [14, 14, 24, 18, 14, 14, 10, 34, 12, 20].map((wch) => ({
-            wch,
-        }));
-        const book = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(book, sheet, "Fine Records");
-        XLSX.writeFile(book, `fines_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        const rows = exportState.records;
+        const blob = await finesService.export(rows.map(f => f.fineId));
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = `fines_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        link.click(); URL.revokeObjectURL(url);
         setExportState(null);
         setToast({ message: `${rows.length} fine records exported successfully.` });
     };
@@ -143,7 +139,9 @@ export default function App() {
                     setAuthNotice("");
                     setAuthPage("signup");
                 }} onLogin={setUser}/>);
-    return (<Layout page={page} user={user} onLogout={() => {
+    return (<Layout page={page} user={user} onLogout={async () => {
+            try { await authService.logout(); } catch { /* Local session is cleared even if the server is unavailable. */ }
+            setRecords([]);
             setUser(null);
             setPage("dashboard");
             setSelected(null);
@@ -152,7 +150,8 @@ export default function App() {
             if (next === "dashboard")
                 setNavFilters({});
         }}>
-      {loading && !records.length ? (<LoadingPage />) : page === "dashboard" ? (<><h1 className="page-title">Executive Summary</h1><DashboardPage records={records} onNavigateFines={navigateFines}/></>) : (<><h1 className="page-title">Fines Details</h1><FinesDetailsPage key={JSON.stringify(navFilters)} records={records} role={user.role} initialFilters={navFilters} onOpen={openFine} onRefresh={refresh} onExport={(fines, filters) => setExportState({ records: fines, filters })}/></>)}
+      <div className="workspace-heading"><div><span className="eyebrow red">OPERATIONS / FINANCE</span><p>Fines &amp; Fees · Logistics, warehouse and manufacturing</p></div>{user.role === "Admin" && <button className="btn btn-secondary" onClick={() => setPage(page === 'import' ? 'dashboard' : 'import')}>{page === 'import' ? 'Back to summary' : 'Import dataset'}</button>}</div>
+      {page === 'import' ? <ImportPage onImported={refresh}/> : loading && !records.length ? (<LoadingPage />) : page === "dashboard" ? (<><h1 className="page-title">Executive Summary</h1><DashboardPage records={records} onNavigateFines={navigateFines}/></>) : (<><h1 className="page-title">Fines Details</h1><FinesDetailsPage key={JSON.stringify(navFilters)} records={records} role={user.role} initialFilters={navFilters} onOpen={openFine} onRefresh={refresh} onExport={(fines, filters) => setExportState({ records: fines, filters })}/></>)}
       {selected && (<FineDrawer fine={selected} role={user.role} history={history} onClose={() => setSelected(null)} onReview={() => setReviewing(selected)}/>)}
       {reviewing && (<ReviewModal fine={reviewing} role={user.role} onClose={() => setReviewing(null)} onSave={saveReview}/>)}
       {exportState && (<ExportModal count={exportState.records.length} filters={{

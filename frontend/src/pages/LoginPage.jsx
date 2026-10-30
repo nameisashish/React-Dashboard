@@ -1,6 +1,6 @@
 import { BarChart3, Check, ClipboardCheck, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, } from "lucide-react";
 import { useState } from "react";
-import { Button, Modal } from "../components/ui.jsx";
+import { Button } from "../components/ui.jsx";
 import { authService } from "../services/authService.js";
 export function LoginPage({ onLogin, onSignUp, notice, }) {
     const [email, setEmail] = useState("");
@@ -8,8 +8,6 @@ export function LoginPage({ onLogin, onSignUp, notice, }) {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
-    const [recovery, setRecovery] = useState(false);
-    const [recovered, setRecovered] = useState(false);
     const [authError, setAuthError] = useState("");
     const [requestedRole, setRequestedRole] = useState("Viewer");
     const submit = async (event) => {
@@ -81,7 +79,7 @@ export function LoginPage({ onLogin, onSignUp, notice, }) {
           </ul>
         </div>
         <p className="login-foot">
-          Internal demonstration · Synthetic data only
+          Fines & Fees · Operations workspace
         </p>
       </section>
       <main className="login-form-wrap">
@@ -121,15 +119,6 @@ export function LoginPage({ onLogin, onSignUp, notice, }) {
               </div>
               {errors.password && <small role="alert">{errors.password}</small>}
             </label>
-            <div className="form-row">
-              <label className="checkbox">
-                <input type="checkbox"/>
-                Remember me
-              </label>
-              <button type="button" className="text-btn" onClick={() => { setRecovery(true); setRecovered(false); }}>
-                Forgot password?
-              </button>
-            </div>
             <div className="login-role-actions">
               {["Admin", "Super User", "Viewer"].map(role => (<Button key={role} type="submit" value={role} className="full" variant={role === "Admin" ? "primary" : "secondary"} disabled={loading} onClick={() => setRequestedRole(role)}>
                   {loading && requestedRole === role ? "Signing in…" : `Sign In as ${role}`}
@@ -142,47 +131,9 @@ export function LoginPage({ onLogin, onSignUp, notice, }) {
           </p>
           <p className="security-note">
             <ShieldCheck size={15}/>
-            Demo authentication only. Add a server and database before production use.
+            Access is controlled by your administrator.
           </p>
         </div>
       </main>
-      {recovery && (<Modal title="Recover access" onClose={() => {
-                setRecovery(false);
-                setRecovered(false);
-            }}>
-          <div className="modal-body">
-            {recovered ? (<div className="recovery-success">
-                <div>
-                  <Check />
-                </div>
-                <h3>Recovery request recorded</h3>
-                <p>
-                  This prototype does not send real email. In production, your
-                  identity provider will handle account recovery.
-                </p>
-                <Button onClick={() => { setRecovery(false); setRecovered(false); }}>
-                  Return to login
-                </Button>
-              </div>) : (<>
-                <p>
-                  Enter your work email. This demonstration will show the
-                  recovery flow without sending an email.
-                </p>
-                <label className="form-field">
-                  <span>Work email</span>
-                  <div>
-                    <Mail size={18}/>
-                    <input type="email" placeholder="Enter your work email"/>
-                  </div>
-                </label>
-                <div className="modal-actions">
-                  <Button variant="secondary" onClick={() => { setRecovery(false); setRecovered(false); }}>
-                    Cancel
-                  </Button>
-                  <Button onClick={() => setRecovered(true)}>Continue</Button>
-                </div>
-              </>)}
-          </div>
-        </Modal>)}
     </div>);
 }

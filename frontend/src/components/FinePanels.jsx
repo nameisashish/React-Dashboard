@@ -117,6 +117,7 @@ export function ReviewModal({ fine, role, onClose, onSave, }) {
                 decision: decision,
                 comment: comment.trim(),
                 expectedStatus: fine.status,
+                expectedVersion: fine.version,
             });
         }
         catch (error) {
@@ -222,8 +223,10 @@ export function ReviewModal({ fine, role, onClose, onSave, }) {
 }
 export function ExportModal({ count, filters, onClose, onExport, }) {
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
     return (<Modal title="Export Fine Records" onClose={onClose}>
       <div className="modal-body export-modal">
+        {error && <p role="alert" className="field-error">{error}</p>}
         <p>
           Download all records matching the current search and filters, across
           every table page.
@@ -247,7 +250,7 @@ export function ExportModal({ count, filters, onClose, onExport, }) {
         <div className="alert info">
           <FileText size={18}/>
           <span>
-            The workbook includes the configured USD reporting context and
+            The workbook includes the INR reporting context and
             preserves monetary precision.
           </span>
         </div>
@@ -257,8 +260,7 @@ export function ExportModal({ count, filters, onClose, onExport, }) {
           </Button>
           <Button disabled={loading || !count} onClick={async () => {
             setLoading(true);
-            await onExport();
-            setLoading(false);
+            try { await onExport(); } catch { setError("Unable to export. Please retry."); } finally { setLoading(false); }
         }}>
             {loading ? "Preparing workbook…" : "Download Excel"}
           </Button>

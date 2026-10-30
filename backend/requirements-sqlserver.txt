@@ -1,0 +1,2 @@
+-r requirement.txt
+pyodbc>=5,<6

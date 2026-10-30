@@ -1,7 +1,8 @@
+import { useFines } from "../services/useFines.js";
 import { ArrowDown, ArrowUp, Download, FilterX, MoreHorizontal, RefreshCw, } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button, Card, EmptyState, SearchField, Select, StatusBadge, } from "../components/ui.jsx";
-import { reasons } from "../data/mockData.js";
+
 import { exactMoney, filterFines, shortDate } from "../utils/fines.js";
 export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExport, onRefresh, }) {
     const [filters, setFilters] = useState({
@@ -14,13 +15,15 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
         field: "fineDate",
         direction: "desc",
     });
+    const reasons = [...new Set(records.map(f => f.reasonCategory))];
     const customers = Array.from(new Map(records.map((f) => [f.customerId, f.customerName])));
-    const filtered = useMemo(() => filterFines(records, filters).sort((a, b) => {
+    const remote = useFines(filters, records);
+    const filtered = useMemo(() => filterFines(remote.rows, filters).sort((a, b) => {
         const result = sort.field === "fineAmount"
             ? a.fineAmount - b.fineAmount
             : a.fineDate.localeCompare(b.fineDate);
         return sort.direction === "asc" ? result : -result;
-    }), [records, filters, sort]);
+    }), [remote.rows, filters, sort]);
     const maxPage = Math.max(1, Math.ceil(filtered.length / pageSize));
     const currentPage = Math.min(page, maxPage);
     const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -38,6 +41,8 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
     }));
     const SortIcon = ({ field }) => sort.field === field ? (sort.direction === "asc" ? (<ArrowUp size={13}/>) : (<ArrowDown size={13}/>)) : null;
     return (<>
+      {remote.loading && <p role="status">Loading records…</p>}
+      {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. Use Refresh or change a filter to retry.</p>}
       <Card className="records-card sticky-filters records-filters">
         <div className="records-search">
           <SearchField value={filters.search ?? ""} onChange={(search) => update({ search })} placeholder="Search Fine ID, Customer ID, or Order Reference…"/>
@@ -75,7 +80,10 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
                 {name}
               </option>))}
           </Select>
-          <Select label="Fine reason" value={filters.reasons[0] ?? ""} onChange={(e) => update({ reasons: e.target.value ? [e.target.value] : [] })}>
+          <Select label="Operational area" value={filters.sourceArea || ""} onChange={e => setFilters(f => ({ ...f, sourceArea: e.target.value || undefined }))}>
+          <option value="">All areas</option><option>Logistics</option><option>Warehouse</option><option>Manufacturing</option>
+        </Select>
+        <Select label="Fine reason" value={filters.reasons[0] ?? ""} onChange={(e) => update({ reasons: e.target.value ? [e.target.value] : [] })}>
             <option value="">All reasons</option>
             {reasons.map((reason) => (<option key={reason}>{reason}</option>))}
           </Select>

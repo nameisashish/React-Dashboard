@@ -150,3 +150,30 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .main-table td:last-child { align-items:flex-start }
   .main-table td .row-actions { justify-content:flex-start }
 }
+
+/* Operations workspace */
+:root { --red:#0f766e; --red-dark:#115e59; --red-pale:#e6f5f2; --navy:#102b32; --bg:#f4f7f8; }
+.sidebar { background:linear-gradient(180deg,#102b32,#173c43); }
+.content { max-width:1700px; margin:auto; }
+.page-title { letter-spacing:-.035em; font-size:30px; margin-bottom:24px; }
+.workspace-heading { display:flex; justify-content:space-between; align-items:center; gap:20px; margin:8px 0 24px; }
+.workspace-heading p { color:var(--muted); font-size:13px; margin:8px 0; }
+.kpi { border-radius:14px; box-shadow:0 4px 18px #102b3206; }
+.kpi strong { letter-spacing:-.04em; }
+.source-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:22px 0; }
+.source-grid button { text-align:left; display:grid; gap:12px; padding:22px; border:1px solid var(--border); background:white; border-radius:12px; }
+.source-grid button:hover { border-color:var(--red); }
+.source-grid span { color:var(--muted); font-size:13px; }
+.source-grid strong { font-size:24px; letter-spacing:-.025em; }
+.source-grid small { color:var(--red); }
+.queue-banner { display:flex; align-items:center; justify-content:space-between; gap:20px; background:#e8f3f1; border:1px solid #c6e4dc; border-radius:12px; padding:20px 24px; margin-bottom:24px; }
+.queue-banner p { color:var(--muted); font-size:12px; margin:6px 0 0; }
+.import-card { padding:30px; max-width:900px; }
+.import-card p { color:var(--muted); line-height:1.8; overflow-wrap:anywhere; }
+.import-actions { display:flex; gap:12px; margin:24px 0; }
+.login-brand { background:radial-gradient(ellipse at bottom left,#23635f,transparent 70%),#102b32; }
+.login-copy li>svg,.eyebrow { color:#95ded1; }
+@media(max-width:700px) { .source-grid { grid-template-columns:1fr; } .queue-banner,.workspace-heading { align-items:flex-start; flex-direction:column; } }
+.filter-bar { flex-wrap:wrap; }
+.filter-bar .field { flex:1 1 150px; }
+.nav-item.active { color:#b3eee1; background:#24534f; border-left-color:#7dd3c2; }
