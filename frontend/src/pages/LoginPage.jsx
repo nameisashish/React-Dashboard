@@ -3,22 +3,22 @@ import { useState } from "react";
 import { Button } from "../components/ui.jsx";
 import { authService } from "../services/authService.js";
 export function LoginPage({ onLogin, onSignUp, notice, }) {
-    const [userId, setUserId] = useState("");
+    const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const [authError, setAuthError] = useState("");
     const submit = async (event) => {
         event.preventDefault();
         const next = {};
-        if (!userId.trim())
-            next.userId = "Enter your user ID.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+            next.email = "Enter a valid work email.";
         setErrors(next);
         if (Object.keys(next).length)
             return;
         setLoading(true);
         setAuthError("");
         try {
-            const user = await authService.signIn(userId);
+            const user = await authService.signIn(email);
             onLogin(user);
         }
         catch (error) {
@@ -95,11 +95,11 @@ export function LoginPage({ onLogin, onSignUp, notice, }) {
             </div>)}
           <form onSubmit={submit} noValidate>
             <label className="form-field">
-              <span>User ID</span>
+              <span>Work email</span>
               <div>
-                <input type="text" inputMode="numeric" autoComplete="username" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="Enter your user ID" aria-invalid={!!errors.userId}/>
+                <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your work email" aria-invalid={!!errors.email}/>
               </div>
-              {errors.userId && <small role="alert">{errors.userId}</small>}
+              {errors.email && <small role="alert">{errors.email}</small>}
             </label>
             <Button type="submit" className="full" disabled={loading}>
               {loading ? "Signing in…" : "Sign In"}

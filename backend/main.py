@@ -22,7 +22,7 @@ from database import Base, engine, get_db
 from models import User, Session, Fine, Review, ActivityEvent, ImportBatch
 
 IS_SQLSERVER = engine.dialect.name == 'mssql'
-ALLOW_USER_ID_LOGIN = os.getenv('ALLOW_USER_ID_LOGIN', 'false').strip().lower() == 'true'
+ALLOW_PASSWORDLESS_LOGIN = os.getenv('ALLOW_PASSWORDLESS_LOGIN', os.getenv('ALLOW_USER_ID_LOGIN', 'false')).strip().lower() == 'true'
 
 Status = Literal['Valid', 'Invalid', 'Pending']
 Role = Literal['Admin', 'Super User', 'Viewer']
@@ -115,13 +115,17 @@ def signup(body: Registration, db: DBSession=Depends(get_db)):
 
 @app.post('/api/auth/signin')
 def signin(body: Login, db: DBSession=Depends(get_db)):
-    if ALLOW_USER_ID_LOGIN:
-        if not body.userId or not body.userId.strip(): fail(401, 'invalid-credentials')
-        try:
-            user_key = int(body.userId) if IS_SQLSERVER else body.userId.strip()
-        except ValueError:
+    if ALLOW_PASSWORDLESS_LOGIN:
+        if body.email:
+            user = db.scalar(select(User).where(User.email == str(body.email).lower()))
+        elif body.userId and body.userId.strip():
+            try:
+                user_key = int(body.userId) if IS_SQLSERVER else body.userId.strip()
+            except ValueError:
+                fail(401, 'invalid-credentials')
+            user = db.get(User, user_key)
+        else:
             fail(401, 'invalid-credentials')
-        user = db.get(User, user_key)
     else:
         if not body.email or not body.password: fail(401, 'invalid-credentials')
         user = db.scalar(select(User).where(User.email == str(body.email).lower()))
