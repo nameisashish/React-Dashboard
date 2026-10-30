@@ -78,7 +78,7 @@ export function Layout({ children, page, user, onNavigate, onLogout, }) {
                   <strong>{user.fullName}</strong>
                   <span>{user.email}</span>
                   <b className={`role-badge role-${user.role.toLowerCase().replace(/\s+/g, "-")}`}>
-                    {user.role}
+                    {user.role === "Viewer" ? "User" : user.role}
                   </b>
                 </div>
               </div>
@@ -95,7 +95,7 @@ export function Layout({ children, page, user, onNavigate, onLogout, }) {
                   </div>
                   <div>
                     <dt>Assigned Role</dt>
-                    <dd>{user.role}</dd>
+                    <dd>{user.role === "Viewer" ? "User" : user.role}</dd>
                   </div>
                   <div>
                     <dt>Access Level</dt>
@@ -113,7 +113,7 @@ export function Layout({ children, page, user, onNavigate, onLogout, }) {
             <div className="avatar">{initials}</div>
             <div>
               <strong>{user.fullName}</strong>
-              <span>{user.role}</span>
+              <span>{user.role === "Viewer" ? "User" : user.role}</span>
             </div>
             <ShieldCheck size={17}/>
           </button>
@@ -127,7 +127,7 @@ export function Layout({ children, page, user, onNavigate, onLogout, }) {
         </button>
         <div className="content">{children}</div>
       </main>
-      {usersOpen && <Modal title="User Management" onClose={() => setUsersOpen(false)} className="users-modal"><div className="modal-body"><p>Review registrations and manage user access.</p><div className="user-tabs">{["Pending Approval", "Approved", "Rejected"].map(s => <Button key={s} variant={filter === s ? "primary" : "secondary"} onClick={() => setFilter(s)}>{s}{s === "Pending Approval" ? ` (${requests.filter(r => r.status === s).length})` : ""}</Button>)}</div><div className="table-wrap"><table><thead><tr><th>User ID</th><th>Full Name</th><th>Email</th><th>Requested</th><th>Assigned</th><th>Registered</th><th>Status</th><th>Actions</th></tr></thead><tbody>{requests.filter(r => r.status === filter).map(r => <tr key={r.id}><td>{r.id}</td><td>{r.fullName}</td><td>{r.email}</td><td>{r.requestedRole}</td><td>{r.assignedRole ?? "Not assigned"}</td><td>{new Date(r.registeredAt).toLocaleDateString()}</td><td>{r.status}</td><td>{r.status === "Pending Approval" && <><Button variant="secondary" onClick={() => setTarget(r)}>Approve</Button> <Button variant="danger" onClick={() => safe(async () => { await authService.decide(r.id, "reject"); setRequests(await authService.requests()); })}>Reject</Button></>}</td></tr>)}</tbody></table></div>{requests.filter(r => r.status === filter).length === 0 && <p>{filter === "Pending Approval" ? "No pending registrations" : "All registration requests have been reviewed."}</p>}</div></Modal>}
-      {target && <Modal title="Approve User" onClose={() => setTarget(null)}><div className="modal-body"><p>Approve {target.fullName} ({target.email})?</p><label className="form-field"><span>Assign Role</span><select value={assigned} onChange={e => setAssigned(e.target.value)}><option>Super User</option><option>Viewer</option></select></label><p>{assigned === "Super User" ? "Can view fine records and change eligible fine statuses. Cannot manage users." : "Can view fine records and export permitted records. Cannot change fine statuses or manage users."}</p><div className="modal-actions"><Button variant="secondary" onClick={() => setTarget(null)}>Cancel</Button><Button onClick={() => safe(async () => { await authService.decide(target.id, "approve", assigned); setRequests(await authService.requests()); setTarget(null); })}>Confirm Approval</Button></div></div></Modal>}
+      {usersOpen && <Modal title="User Management" onClose={() => setUsersOpen(false)} className="users-modal"><div className="modal-body"><p>Review registrations and manage user access.</p><div className="user-tabs">{["Pending Approval", "Approved", "Rejected"].map(s => <Button key={s} variant={filter === s ? "primary" : "secondary"} onClick={() => setFilter(s)}>{s}{s === "Pending Approval" ? ` (${requests.filter(r => r.status === s).length})` : ""}</Button>)}</div><div className="table-wrap"><table><thead><tr><th>User ID</th><th>Full Name</th><th>Email</th><th>Requested</th><th>Assigned</th><th>Registered</th><th>Status</th><th>Actions</th></tr></thead><tbody>{requests.filter(r => r.status === filter).map(r => <tr key={r.id}><td>{r.id}</td><td>{r.fullName}</td><td>{r.email}</td><td>{r.requestedRole === "Viewer" ? "User" : r.requestedRole}</td><td>{r.assignedRole === "Viewer" ? "User" : r.assignedRole ?? "Not assigned"}</td><td>{new Date(r.registeredAt).toLocaleDateString()}</td><td>{r.status}</td><td>{r.status === "Pending Approval" && <><Button variant="secondary" onClick={() => setTarget(r)}>Approve</Button> <Button variant="danger" onClick={() => safe(async () => { await authService.decide(r.id, "reject"); setRequests(await authService.requests()); })}>Reject</Button></>}</td></tr>)}</tbody></table></div>{requests.filter(r => r.status === filter).length === 0 && <p>{filter === "Pending Approval" ? "No pending registrations" : "All registration requests have been reviewed."}</p>}</div></Modal>}
+      {target && <Modal title="Approve User" onClose={() => setTarget(null)}><div className="modal-body"><p>Approve {target.fullName} ({target.email})?</p><label className="form-field"><span>Assign Role</span><select value={assigned} onChange={e => setAssigned(e.target.value)}><option>Super User</option><option value="Viewer">User</option></select></label><p>{assigned === "Super User" ? "Can view fine records and change eligible fine statuses. Cannot manage users." : "Can view fine records and export permitted records. Cannot change fine statuses or manage users."}</p><div className="modal-actions"><Button variant="secondary" onClick={() => setTarget(null)}>Cancel</Button><Button onClick={() => safe(async () => { await authService.decide(target.id, "approve", assigned); setRequests(await authService.requests()); setTarget(null); })}>Confirm Approval</Button></div></div></Modal>}
     </div>);
 }

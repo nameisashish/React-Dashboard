@@ -1,15 +1,15 @@
-export const money = (value, currency = "INR") => new Intl.NumberFormat("en-IN", {
+export const money = (value, currency = "USD") => new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
 }).format(value);
-export const exactMoney = (value, currency = "INR") => new Intl.NumberFormat("en-IN", { style: "currency", currency }).format(value);
-export const shortDate = (value) => new Intl.DateTimeFormat("en-IN", {
+export const exactMoney = (value, currency = "USD") => new Intl.NumberFormat("en-US", { style: "currency", currency }).format(value);
+export const shortDate = (value) => new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
 }).format(new Date(value));
-export const dateTime = (value) => new Intl.DateTimeFormat("en-IN", {
+export const dateTime = (value) => new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
 }).format(new Date(value));
@@ -59,7 +59,7 @@ export function aggregateMonths(records) {
         const date = new Date(fine.fineDate);
         const sort = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
         const row = map.get(sort) ?? {
-            month: date.toLocaleDateString("en-IN", {
+            month: date.toLocaleDateString("en-US", {
                 month: "short",
                 year: "2-digit",
             }),

@@ -87,7 +87,7 @@ export function DashboardPage({ records, onNavigateFines, }) {
       </Card>
       <div className="kpi-grid">
         <Kpi icon={<FileText />} label="Total Fines" value={filtered.length.toLocaleString()} detail="Fine cases in the selected period"/>
-        <Kpi icon={<CircleDollarSign />} label="Total Deductions" value={money(totalAmount)} detail="Gross recorded amount · INR"/>
+        <Kpi icon={<CircleDollarSign />} label="Total Deductions" value={money(totalAmount)} detail="Gross recorded amount · USD"/>
         <button className="kpi-button" onClick={() => onNavigateFines({ ...filters, status: "Pending" })}>
           <Kpi icon={<Clock3 />} label="Pending Cases" value={pending.length.toLocaleString()} detail="Awaiting manual review" arrow/>
         </button>

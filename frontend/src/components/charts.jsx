@@ -63,14 +63,14 @@ export function StatusAmountChart({ records }) {
       <div className="card-heading">
         <div>
           <h2>Fine Amount by Status</h2>
-          <p>Recorded financial amount in INR.</p>
+          <p>Recorded financial amount in USD.</p>
         </div>
       </div>
       {!records.length ? (<EmptyState />) : (<div className="chart">
           <ResponsiveContainer>
             <BarChart data={data} layout="vertical" margin={{ left: 8, right: 24 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false}/>
-              <XAxis type="number" tickFormatter={(v) => `₹${Math.round(v / 1000)}k`} tickLine={false}/>
+              <XAxis type="number" tickFormatter={(v) => `$${Math.round(v / 1000)}k`} tickLine={false}/>
               <YAxis type="category" dataKey="status" width={64} tickLine={false} axisLine={false}/>
               <Tooltip formatter={(v) => money(Number(v))} contentStyle={tooltipStyle}/>
               <Bar dataKey="amount" radius={[0, 5, 5, 0]} barSize={24}>
@@ -108,7 +108,7 @@ export function ReasonsChart({ records, onSelect, }) {
           <ResponsiveContainer>
             <BarChart data={data} layout="vertical" margin={{ left: 34, right: 24 }} onClick={(state) => state?.activeLabel && onSelect(String(state.activeLabel))}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false}/>
-              <XAxis type="number" tickFormatter={(v) => metric === "amount" ? `₹${Math.round(v / 1000)}k` : v}/>
+              <XAxis type="number" tickFormatter={(v) => metric === "amount" ? `$${Math.round(v / 1000)}k` : v}/>
               <YAxis type="category" dataKey="reason" width={140} tick={{ fontSize: 11 }} axisLine={false} tickLine={false}/>
               <Tooltip formatter={(v) => metric === "amount" ? money(Number(v)) : Number(v)} contentStyle={tooltipStyle}/>
               <Bar dataKey={metric} fill="#0F766E" radius={[0, 5, 5, 0]} barSize={18} cursor="pointer"/>
@@ -136,7 +136,7 @@ export function TrendChart({ records }) {
             <LineChart data={data} margin={{ left: 4, right: 20, top: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false}/>
               <XAxis dataKey="month" tickLine={false} tick={{ fontSize: 11 }}/>
-              <YAxis tickFormatter={(v) => metric === "amount" ? `₹${Math.round(v / 1000)}k` : v} tickLine={false}/>
+              <YAxis tickFormatter={(v) => metric === "amount" ? `$${Math.round(v / 1000)}k` : v} tickLine={false}/>
               <Tooltip formatter={(v) => metric === "amount" ? money(Number(v)) : Number(v)} contentStyle={tooltipStyle}/>
               <Line type="monotone" dataKey={metric} stroke="#0F766E" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }}/>
             </LineChart>

@@ -17,7 +17,7 @@ export function ImportPage({ onImported }) {
   return <Card className="import-card"><span className="eyebrow red">DATA INTAKE</span><h2>Validate before importing</h2>
     <p>Upload a validated-source workbook (.xlsx, up to 5 MB and 10,000 rows). No records are saved until you review validation and select Import.</p>
     <p>Required columns: <code>CustomerID, Fines Imposed, Status, Reason, Date, SourceArea</code>.</p>
-    <p>Status: Valid, Invalid or Pending. SourceArea: Logistics, Warehouse or Manufacturing. Dates: Excel dates or YYYY-MM-DD. Amounts: INR, nonnegative, up to two decimals. This checks structure; business validity must be confirmed separately.</p>
+    <p>Status: Valid, Invalid or Pending. SourceArea: Logistics, Warehouse or Manufacturing. Dates: Excel dates or YYYY-MM-DD. Amounts: USD, nonnegative, up to two decimals. This checks structure; business validity must be confirmed separately.</p>
     <input aria-label="Excel dataset" type="file" accept=".xlsx" disabled={busy} onChange={e => { setFile(e.target.files[0]); setResult(null); setError(''); }}/>
     <div className="import-actions"><Button disabled={!file || busy} onClick={() => run(false)}>{busy ? 'Processing…' : 'Validate workbook'}</Button>
     {result?.valid && !result.imported && <Button disabled={busy} onClick={() => run(true)}>Import {result.rows} records</Button>}</div>

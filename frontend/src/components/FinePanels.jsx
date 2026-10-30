@@ -250,7 +250,7 @@ export function ExportModal({ count, filters, onClose, onExport, }) {
         <div className="alert info">
           <FileText size={18}/>
           <span>
-            The workbook includes the INR reporting context and
+            The workbook includes the USD reporting context and
             preserves monetary precision.
           </span>
         </div>

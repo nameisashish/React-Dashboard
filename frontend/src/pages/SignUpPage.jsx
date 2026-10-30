@@ -68,7 +68,7 @@ export function SignUpPage({ onSignIn, }) {
           </div>)}
         <form onSubmit={submit} noValidate>
           <AuthField label="Full Name" icon={<User size={18}/>} value={fullName} onChange={setFullName} placeholder="Enter your full name" error={errors.fullName}/>
-          <label className="form-field"><span>Account Type</span><div><select value={requestedRole} onChange={e => setRequestedRole(e.target.value)}><option>Viewer</option><option>Super User</option></select></div><em>Your account must be approved by an administrator before you can sign in.</em></label>
+          <label className="form-field"><span>Account Type</span><div><select value={requestedRole} onChange={e => setRequestedRole(e.target.value)}><option value="Viewer">User</option><option>Super User</option></select></div><em>Your account must be approved by an administrator before you can sign in.</em></label>
           <AuthField label="Work Email" icon={<Mail size={18}/>} type="email" value={email} onChange={setEmail} placeholder="Enter your work email" error={errors.email}/>
           <AuthField label="Password" icon={<LockKeyhole size={18}/>} type={showPassword ? "text" : "password"} value={password} onChange={setPassword} placeholder="Create a password" error={errors.password} action={<button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>
                 {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}

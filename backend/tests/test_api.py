@@ -38,6 +38,7 @@ def auth(c,role='Admin'):
 def record(c,h):
     response=c.post('/api/fines',headers=h,json={'customerId':'C001','fineAmount':'125.50','fineDate':'2026-10-01','reasonCategory':'Missing proof','sourceArea':'Warehouse'})
     assert response.status_code==201,response.text
+    assert response.json()['currencyCode']=='USD'
     return response.json()
 
 def test_roles_signup_approval_logout(client):
@@ -81,6 +82,7 @@ def test_reviews_filters_kpis_and_concurrency(client):
     assert book.active.max_row==2
     assert book.active.cell(2,6).value==125.5
     assert book.active.cell(2,10).value=='Invalid'
+    assert book.active.cell(2,7).value=='USD'
 
 def workbook(amount):
     w=Workbook(); w.active.append(['CustomerID','Fines Imposed','Status','Reason','Date','SourceArea']);w.active.append(['C002',amount,'Pending','Missing evidence','2026-10-02','Logistics']);b=BytesIO();w.save(b);return b.getvalue()
@@ -96,3 +98,10 @@ def test_atomic_import_and_duplicate_protection(client):
     assert upload(data,True).status_code==409
     assert len(c.get('/api/fines',headers=h).json())==1
     assert c.post('/api/imports/validate',headers=h,files={'file':('bad.xlsx',b'broken')}).status_code==422
+
+
+def test_usd_contract(client):
+    c=client; h=auth(c)
+    assert c.get('/api/dashboard',headers=h).json()['currencyCode']=='USD'
+    body={'customerId':'C001','fineAmount':'125.50','fineDate':'2026-10-01','reasonCategory':'Missing proof','sourceArea':'Warehouse','currencyCode':'INR'}
+    assert c.post('/api/fines',headers=h,json=body).status_code==422

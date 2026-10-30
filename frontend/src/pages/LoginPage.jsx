@@ -121,7 +121,7 @@ export function LoginPage({ onLogin, onSignUp, notice, }) {
             </label>
             <div className="login-role-actions">
               {["Admin", "Super User", "Viewer"].map(role => (<Button key={role} type="submit" value={role} className="full" variant={role === "Admin" ? "primary" : "secondary"} disabled={loading} onClick={() => setRequestedRole(role)}>
-                  {loading && requestedRole === role ? "Signing in…" : `Sign In as ${role}`}
+                  {loading && requestedRole === role ? "Signing in…" : `Sign In as ${role === "Viewer" ? "User" : role}`}
                 </Button>))}
             </div>
           </form>

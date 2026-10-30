@@ -129,7 +129,7 @@ class FineInput(BaseModel):
     fineDate: date
     sourceArea: Source
     orderReference: str = Field(default='', max_length=120)
-    currencyCode: Literal['INR'] = 'INR'
+    currencyCode: Literal['USD'] = 'USD'
     @field_validator('customerId', 'reasonCategory')
     @classmethod
     def nonblank(cls, value):
@@ -162,7 +162,7 @@ def fines(status: Optional[Status]=None, customerId: Optional[str]=None, sourceA
 @app.get('/api/dashboard')
 def dashboard(user=Depends(current), db: DBSession=Depends(get_db)):
     rows=filtered(db)
-    return {'totalFines':len(rows), 'totalDeductions':sum(Decimal(str(f['fineAmount'])) for f in rows), 'pendingCases':sum(f['status']=='Pending' for f in rows), 'deductionsBySource':{s:sum(Decimal(str(f['fineAmount'])) for f in rows if f['sourceArea']==s) for s in ['Logistics','Warehouse','Manufacturing']}, 'currencyCode':'INR'}
+    return {'totalFines':len(rows), 'totalDeductions':sum(Decimal(str(f['fineAmount'])) for f in rows), 'pendingCases':sum(f['status']=='Pending' for f in rows), 'deductionsBySource':{s:sum(Decimal(str(f['fineAmount'])) for f in rows if f['sourceArea']==s) for s in ['Logistics','Warehouse','Manufacturing']}, 'currencyCode':'USD'}
 
 @app.post('/api/fines',status_code=201)
 def create(body: FineInput, user=Depends(admin), db: DBSession=Depends(get_db)):
@@ -254,7 +254,7 @@ def export_fines(body: ExportRequest, user=Depends(current), db: DBSession=Depen
     for offset in range(0,len(ids),500):
         for fine in db.scalars(select(Fine).where(Fine.id.in_(ids[offset:offset+500]))):
             f=output(fine)
-            sheet.append([f['fineId'],f['customerId'],f.get('customerName',''),f.get('orderReference',''),f['fineDate'],float(fine.amount),'INR',f['reasonCategory'],f['sourceArea'],f['status'],f.get('lastReviewComment','')])
+            sheet.append([f['fineId'],f['customerId'],f.get('customerName',''),f.get('orderReference',''),f['fineDate'],float(fine.amount),'USD',f['reasonCategory'],f['sourceArea'],f['status'],f.get('lastReviewComment','')])
             for cell in sheet[sheet.max_row]:
                 if isinstance(cell.value,str): cell.data_type='s'
             sheet.cell(sheet.max_row,6).number_format='#,##0.00'
