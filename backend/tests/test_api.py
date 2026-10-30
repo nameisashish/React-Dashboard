@@ -123,3 +123,69 @@ def test_role_page_and_api_matrix(client,role,summary,manage,review,import_statu
 
 def test_registration_cannot_request_admin(client):
     assert client.post('/api/auth/signup',json={'fullName':'Escalation','email':'escalate@example.com','password':'password123','requestedRole':'Admin'}).status_code==422
+
+def test_rejection_wrong_role_and_expired_sessions(client):
+    c=client; admin=auth(c)
+    body={'fullName':'Rejected User','email':'rejected@example.com','password':'password123','requestedRole':'Viewer'}
+    c.post('/api/auth/signup',json=body).raise_for_status()
+    user=next(u for u in c.get('/api/users/requests',headers=admin).json() if u['email']==body['email'])
+    path='/api/users/'+user['id']+'/decision'
+    assert c.post(path,headers=admin,json={'decision':'reject'}).status_code==200
+    assert c.post(path,headers=admin,json={'decision':'approve'}).status_code==409
+    assert c.post('/api/auth/signin',json={'email':body['email'],'password':body['password'],'requestedRole':'Viewer'}).json()['detail']=='rejected'
+    assert c.post('/api/auth/signin',json={'email':'admin@example.com','password':'test-password','requestedRole':'Viewer'}).json()['detail']=='wrong-role'
+    assert c.get('/api/fines',headers={'Authorization':'Bearer invalid'}).status_code==401
+    from models import Session
+    from sqlalchemy import update
+    generator=app.dependency_overrides[get_db]()
+    db=next(generator)
+    db.execute(update(Session).values(expires_at='2000-01-01T00:00:00+00:00')); db.commit(); generator.close()
+    assert c.get('/api/fines',headers=admin).status_code==401
+
+def test_filters_and_export_preserve_literal_text(client):
+    c=client; h=auth(c)
+    payload={'customerId':'0002','customerName':'=HYPERLINK("example")','fineAmount':'0.10','fineDate':'2026-10-10','reasonCategory':'Packaging','sourceArea':'Manufacturing'}
+    first=c.post('/api/fines',headers=h,json=payload).json()
+    second=c.post('/api/fines',headers=h,json={**payload,'fineAmount':'0.20','fineDate':'2026-10-11','sourceArea':'Logistics'}).json()
+    result=c.get('/api/fines?customerId=0002&sourceArea=Manufacturing&reason=Packaging&fromDate=2026-10-10&toDate=2026-10-10',headers=h)
+    assert [f['fineId'] for f in result.json()]==[first['fineId']]
+    summary=c.get('/api/dashboard',headers=h).json()
+    assert str(summary['totalDeductions'])=='0.3' or str(summary['totalDeductions'])=='0.30'
+    from openpyxl import load_workbook
+    exported=c.post('/api/exports/fines',headers=h,json={'ids':[first['fineId'],first['fineId'],second['fineId']]}).content
+    book=load_workbook(BytesIO(exported))
+    assert book.active.max_row==3
+    assert book.active.cell(2,3).data_type=='s'
+    assert book.active.cell(2,3).value.startswith('=HYPERLINK')
+
+def test_workbook_validation_boundaries(client):
+    c=client; h=auth(c)
+    def send(content,name='data.xlsx'):
+        return c.post('/api/imports/validate?commit=true',headers=h,files={'file':(name,content)})
+    assert send(b'x','data.csv').status_code==422
+    assert send(b'x'*(5*1024*1024+1)).status_code==413
+    book=Workbook(); book.active.append(['Wrong headers']); data=BytesIO(); book.save(data)
+    assert send(data.getvalue()).status_code==422
+    book=Workbook(); book.active.append(['CustomerID','Fines Imposed','Status','Reason','Date','SourceArea'])
+    book.active.append(['0001',100,'Pending','Evidence','2026-10-02','Warehouse'])
+    book.active.append(['0002',-1,'Pending','Evidence','bad-date','Warehouse'])
+    data=BytesIO(); book.save(data)
+    result=send(data.getvalue()).json()
+    assert result['valid'] is False and result['errors'][0]['row']==3
+    assert c.get('/api/fines',headers=h).json()==[]
+
+def test_sqlite_persistence_after_reconnect(client,tmp_path):
+    from models import Fine, Review
+    from main import make_fine, FineInput
+    database_path='sqlite:///'+str(tmp_path/'persist.db')
+    engine=create_engine(database_path)
+    Base.metadata.create_all(engine)
+    with sessionmaker(bind=engine)() as db:
+        fine=make_fine(FineInput(customerId='0005',fineAmount='42.75',fineDate='2026-10-15',reasonCategory='Evidence',sourceArea='Warehouse'))
+        db.add(fine); db.commit(); fine_id=fine.id
+    engine.dispose()
+    reopened=create_engine(database_path)
+    with sessionmaker(bind=reopened)() as db:
+        fine=db.get(Fine,fine_id)
+        assert str(fine.amount)=='42.75' and fine.data['currencyCode']=='USD'
+    reopened.dispose()

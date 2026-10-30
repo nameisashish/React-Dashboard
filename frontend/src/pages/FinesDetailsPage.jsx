@@ -1,7 +1,7 @@
 import { useFines } from "../services/useFines.js";
 import { ArrowDown, ArrowUp, Download, FilterX, MoreHorizontal, RefreshCw, } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Button, Card, EmptyState, SearchField, Select, StatusBadge, } from "../components/ui.jsx";
+import { Button, Card, EmptyState, LoadingPage, SearchField, Select, StatusBadge, } from "../components/ui.jsx";
 
 import { exactMoney, filterFines, shortDate } from "../utils/fines.js";
 export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExport, onRefresh, }) {
@@ -42,7 +42,7 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
     const SortIcon = ({ field }) => sort.field === field ? (sort.direction === "asc" ? (<ArrowUp size={13}/>) : (<ArrowDown size={13}/>)) : null;
     return (<>
       {remote.loading && <p role="status">Loading records…</p>}
-      {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. Use Refresh or change a filter to retry.</p>}
+      {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. <Button onClick={remote.retry}>Retry</Button></p>}
       <Card className="records-card sticky-filters records-filters">
         <div className="records-search">
           <SearchField value={filters.search ?? ""} onChange={(search) => update({ search })} placeholder="Search Fine ID, Customer ID, or Order Reference…"/>
@@ -51,7 +51,7 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
               <RefreshCw size={16}/>
               Refresh
             </Button>
-            <Button onClick={() => onExport(filtered, filters)}>
+            <Button disabled={remote.loading || !!remote.error || !filtered.length} onClick={() => onExport(filtered, filters)}>
               <Download size={16}/>
               Export to Excel
             </Button>
@@ -80,7 +80,7 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
                 {name}
               </option>))}
           </Select>
-          <Select label="Operational area" value={filters.sourceArea || ""} onChange={e => setFilters(f => ({ ...f, sourceArea: e.target.value || undefined }))}>
+          <Select label="Operational area" value={filters.sourceArea || ""} onChange={e => update({ sourceArea: e.target.value || undefined })}>
           <option value="">All areas</option><option>Logistics</option><option>Warehouse</option><option>Manufacturing</option>
         </Select>
         <Select label="Fine reason" value={filters.reasons[0] ?? ""} onChange={(e) => update({ reasons: e.target.value ? [e.target.value] : [] })}>
@@ -92,11 +92,12 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
             Clear all
           </Button>
         </div>
-        {(filters.status ||
+        {(filters.sourceArea || filters.status ||
             filters.customerId ||
             filters.reasons.length > 0 ||
             filters.search) && (<div className="filter-chips">
             <span>Active filters:</span>
+            {filters.sourceArea && <button onClick={() => update({ sourceArea: undefined })}>Area: {filters.sourceArea} ×</button>}
             {filters.status && (<button onClick={() => update({ status: undefined })}>
                 Status: {filters.status} ×
               </button>)}
@@ -113,7 +114,7 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
       </Card>
       <Card className="records-card table-card">
         <div className="table-toolbar">
-          <span>{filtered.length.toLocaleString()} results</span>
+          <span>{remote.loading ? "Loading results…" : remote.error ? "Results unavailable" : `${filtered.length.toLocaleString()} results`}</span>
           <label>
             Rows per page{" "}
             <select value={pageSize} onChange={(e) => {
@@ -126,7 +127,7 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
             </select>
           </label>
         </div>
-        {!filtered.length ? (<EmptyState action={<Button onClick={clearFilters}>
+        {remote.loading ? <LoadingPage/> : remote.error ? <p className="empty-state">Use Retry to load records.</p> : !filtered.length ? (<EmptyState action={<Button onClick={clearFilters}>
                 Clear filters
               </Button>}/>) : (<div className="table-wrap main-table">
             <table>

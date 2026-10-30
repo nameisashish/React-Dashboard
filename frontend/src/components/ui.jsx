@@ -1,3 +1,5 @@
+import { useId } from "react";
+import { useDialog } from "./useDialog.js";
 import { AlertTriangle, CheckCircle2, ChevronDown, LoaderCircle, Search, X, } from "lucide-react";
 export function Button({ className = "", variant = "primary", type = "button", ...props }) {
     return <button type={type} className={`btn btn-${variant} ${className}`} {...props}/>;
@@ -57,10 +59,12 @@ export function EmptyState({ title = "No fines found", description = "No records
     </div>);
 }
 export function Modal({ title, children, onClose, className = "", }) {
+    const dialogRef = useDialog(onClose);
+    const titleId = useId();
     return (<div className="overlay" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <section className={`modal ${className}`} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <section className={`modal ${className}`} ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header>
-          <h2 id="modal-title">{title}</h2>
+          <h2 id={titleId}>{title}</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close dialog">
             <X size={20}/>
           </button>

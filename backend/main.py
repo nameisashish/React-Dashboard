@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Literal, Optional
 from uuid import uuid4
+from zipfile import ZipFile, BadZipFile
 
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -197,11 +198,18 @@ def review(fine_id: str, body: Decision, user=Depends(reviewer), db: DBSession=D
     db.commit(); db.refresh(fine); return output(fine)
 
 @app.post('/api/imports/validate')
-async def import_excel(file: UploadFile=File(...), commit: bool=False, user=Depends(admin), db: DBSession=Depends(get_db)):
+def import_excel(file: UploadFile=File(...), commit: bool=False, user=Depends(admin), db: DBSession=Depends(get_db)):
     """Validate the complete workbook before any inserts. Explicit commit is required."""
     if not file.filename or not file.filename.lower().endswith('.xlsx'): fail(422,'xlsx-required')
-    content=await file.read(5*1024*1024+1)
+    content=file.file.read(5*1024*1024+1)
     if len(content)>5*1024*1024: fail(413,'file-too-large')
+    try:
+        with ZipFile(io.BytesIO(content)) as archive:
+            if sum(entry.file_size for entry in archive.infolist()) > 50*1024*1024:
+                fail(413, 'workbook-expanded-size-too-large')
+    except BadZipFile:
+        fail(422, 'invalid-workbook')
+    book = None
     try:
         book=load_workbook(io.BytesIO(content),read_only=True,data_only=True)
         sheet=book.active
@@ -224,6 +232,8 @@ async def import_excel(file: UploadFile=File(...), commit: bool=False, user=Depe
         book.close()
     except HTTPException: raise
     except Exception: fail(422,'invalid-workbook')
+    finally:
+        if book is not None: book.close()
     if errors: return {'valid':False,'imported':0,'errors':errors}
     if not valid: fail(422,'empty-workbook')
     if commit:

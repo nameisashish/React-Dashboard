@@ -16,7 +16,12 @@ export async function api(path, options = {}) {
       setToken(null);
       window.dispatchEvent(new Event('session-expired'));
     }
-    throw new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail || 'Request failed'));
+    const detail = data.detail;
+    const message = typeof detail === 'string' ? detail
+      : Array.isArray(detail) ? detail.map(item => `${item.loc?.slice(1).join('.') || 'Input'}: ${item.msg}`).join('; ')
+      : detail?.requiredColumns ? `Required columns: ${detail.requiredColumns.join(', ')}`
+      : 'Request failed. Please retry.';
+    throw new Error(message);
   }
   return data;
 }

@@ -2,6 +2,12 @@
 
 React + FastAPI workspace for customer deductions across Logistics, Warehouse and Manufacturing. Replaces the original browser-only mock services with database-backed authentication, account approvals, filters, review decisions and audit history.
 
+## Documentation
+
+- [Capstone documentation](docs/CAPSTONE_DOCUMENTATION.md): architecture, roles, API contracts, verification and SQL Server handoff.
+- [Submission PDF](docs/Capstone-Documentation.pdf).
+- [OpenAPI contract](docs/openapi.json): generated middleware schema for integration.
+
 ## Run locally
 
 Python 3.10+ and Node 22.12+ are required.

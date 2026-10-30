@@ -1,14 +1,16 @@
+import { useDialog } from "./useDialog.js";
 import { AlertTriangle, Calendar, CheckCircle2, CircleDollarSign, Clock3, FileText, UserRound, } from "lucide-react";
 import { useState } from "react";
 import { dateTime, exactMoney, shortDate } from "../utils/fines.js";
 import { Button, Modal, StatusBadge } from "./ui.jsx";
-export function FineDrawer({ fine, role, history, onClose, onReview, }) {
+export function FineDrawer({ fine, role, history, historyError, onClose, onReview, }) {
+    const dialogRef = useDialog(onClose);
     const detail = (label, value) => (<div>
       <dt>{label}</dt>
       <dd>{value ?? "Not available"}</dd>
     </div>);
     return (<div className="drawer-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <aside ref={dialogRef} tabIndex={-1} className="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
         <header>
           <div>
             <span>FINE RECORD</span>
@@ -73,7 +75,7 @@ export function FineDrawer({ fine, role, history, onClose, onReview, }) {
           <h3>
             Review history <span>{history.length}</span>
           </h3>
-          {!history.length ? (<div className="no-history">No manual review recorded.</div>) : (<div className="timeline">
+          {historyError ? <p role="alert" className="alert error">{historyError}</p> : !history.length ? (<div className="no-history">No manual review recorded.</div>) : (<div className="timeline">
               {history.map((item) => (<div key={item.reviewId}>
                   <span className={`timeline-dot ${item.newStatus.toLowerCase()}`}/>
                   <div>
@@ -127,7 +129,7 @@ export function ReviewModal({ fine, role, onClose, onSave, }) {
             setSaving(false);
         }
     };
-    return (<Modal title="Review Fine Status" onClose={onClose} className="review-modal">
+    return (<Modal title="Review Fine Status" onClose={() => { if (!saving) onClose(); }} className="review-modal">
       <div className="modal-body">
         <div className="review-record">
           <div>

@@ -2,7 +2,7 @@ import { useFines } from "../services/useFines.js";
 import { AlertCircle, ArrowRight, CircleDollarSign, Clock3, FileText, RotateCcw, } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ReasonsChart, StatusAmountChart, StatusDistribution, TrendChart, } from "../components/charts.jsx";
-import { Button, Card, EmptyState, Select } from "../components/ui.jsx";
+import { Button, Card, EmptyState, LoadingPage, Select } from "../components/ui.jsx";
 
 import { filterFines, last12Months, money } from "../utils/fines.js";
 export function DashboardPage({ records, onNavigateFines, }) {
@@ -44,7 +44,7 @@ export function DashboardPage({ records, onNavigateFines, }) {
     };
     return (<>
       {remote.loading && <p role="status">Loading records…</p>}
-      {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. Use Refresh or change a filter to retry.</p>}
+      {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. <Button onClick={remote.retry}>Retry</Button></p>}
       <Card className="filter-bar sticky-filters">
         <Select label="Fine date" value={datePreset} onChange={(e) => {
             setDatePreset(e.target.value);
@@ -85,6 +85,7 @@ export function DashboardPage({ records, onNavigateFines, }) {
           Reset
         </Button>
       </Card>
+      {remote.loading ? <LoadingPage/> : remote.error ? null : <>
       <div className="kpi-grid">
         <Kpi icon={<FileText />} label="Total Fines" value={filtered.length.toLocaleString()} detail="Fine cases in the selected period"/>
         <Kpi icon={<CircleDollarSign />} label="Total Deductions" value={money(totalAmount)} detail="Gross recorded amount · USD"/>
@@ -107,6 +108,7 @@ export function DashboardPage({ records, onNavigateFines, }) {
             <TrendChart records={filtered}/>
           </div>
         </>)}
+      </>}
     </>);
 }
 function Kpi({ icon, label, value, detail, arrow, }) {
