@@ -22,6 +22,7 @@ from database import Base, engine, get_db
 from models import User, Session, Fine, Review, ActivityEvent, ImportBatch
 
 IS_SQLSERVER = engine.dialect.name == 'mssql'
+ALLOW_USER_ID_LOGIN = os.getenv('ALLOW_USER_ID_LOGIN', 'false').strip().lower() == 'true'
 
 Status = Literal['Valid', 'Invalid', 'Pending']
 Role = Literal['Admin', 'Super User', 'Viewer']
@@ -86,8 +87,9 @@ class Registration(BaseModel):
         return value.strip()
 
 class Login(BaseModel):
-    email: EmailStr
-    password: str = Field(max_length=128)
+    userId: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = Field(default=None, max_length=128)
     requestedRole: Optional[Role] = None
 
 @app.get('/api/health')
@@ -113,8 +115,18 @@ def signup(body: Registration, db: DBSession=Depends(get_db)):
 
 @app.post('/api/auth/signin')
 def signin(body: Login, db: DBSession=Depends(get_db)):
-    user = db.scalar(select(User).where(User.email == str(body.email).lower()))
-    if not user or not hasher.verify(body.password, user.password_hash): fail(401, 'invalid-credentials')
+    if ALLOW_USER_ID_LOGIN:
+        if not body.userId or not body.userId.strip(): fail(401, 'invalid-credentials')
+        try:
+            user_key = int(body.userId) if IS_SQLSERVER else body.userId.strip()
+        except ValueError:
+            fail(401, 'invalid-credentials')
+        user = db.get(User, user_key)
+    else:
+        if not body.email or not body.password: fail(401, 'invalid-credentials')
+        user = db.scalar(select(User).where(User.email == str(body.email).lower()))
+        if not user or not hasher.verify(body.password, user.password_hash): fail(401, 'invalid-credentials')
+    if not user: fail(401, 'invalid-credentials')
     if user.status not in ('Approved',) : fail(403, 'pending' if user.status in ('Pending', 'Pending Approval') else 'rejected')
     if IS_SQLSERVER and not user.is_active: fail(403, 'rejected')
     if body.requestedRole and app_role(user.role) != body.requestedRole: fail(403, 'wrong-role')

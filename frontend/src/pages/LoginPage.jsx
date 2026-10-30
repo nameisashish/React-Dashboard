@@ -1,28 +1,24 @@
-import { BarChart3, Check, ClipboardCheck, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, } from "lucide-react";
+import { BarChart3, Check, ClipboardCheck, ShieldCheck, } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../components/ui.jsx";
 import { authService } from "../services/authService.js";
 export function LoginPage({ onLogin, onSignUp, notice, }) {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
+    const [userId, setUserId] = useState("");
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const [authError, setAuthError] = useState("");
     const submit = async (event) => {
         event.preventDefault();
         const next = {};
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-            next.email = "Enter a valid work email.";
-        if (!password)
-            next.password = "Enter your password.";
+        if (!userId.trim())
+            next.userId = "Enter your user ID.";
         setErrors(next);
         if (Object.keys(next).length)
             return;
         setLoading(true);
         setAuthError("");
         try {
-            const user = await authService.signIn(email, password);
+            const user = await authService.signIn(userId);
             onLogin(user);
         }
         catch (error) {
@@ -99,23 +95,11 @@ export function LoginPage({ onLogin, onSignUp, notice, }) {
             </div>)}
           <form onSubmit={submit} noValidate>
             <label className="form-field">
-              <span>Work email</span>
+              <span>User ID</span>
               <div>
-                <Mail size={18}/>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your work email" aria-invalid={!!errors.email}/>
+                <input type="text" inputMode="numeric" autoComplete="username" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="Enter your user ID" aria-invalid={!!errors.userId}/>
               </div>
-              {errors.email && <small role="alert">{errors.email}</small>}
-            </label>
-            <label className="form-field">
-              <span>Password</span>
-              <div>
-                <LockKeyhole size={18}/>
-                <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" aria-invalid={!!errors.password}/>
-                <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>
-                  {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
-                </button>
-              </div>
-              {errors.password && <small role="alert">{errors.password}</small>}
+              {errors.userId && <small role="alert">{errors.userId}</small>}
             </label>
             <Button type="submit" className="full" disabled={loading}>
               {loading ? "Signing in…" : "Sign In"}

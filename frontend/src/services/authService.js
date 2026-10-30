@@ -1,7 +1,7 @@
 import { api, setToken } from './api.js';
 export const authService = {
-  async signIn(email, password) {
-    const result = await api('/auth/signin', { method: 'POST', body: JSON.stringify({ email: email.trim(), password }) });
+  async signIn(userId) {
+    const result = await api('/auth/signin', { method: 'POST', body: JSON.stringify({ userId: userId.trim() }) });
     setToken(result.token);
     return result.user;
   },
