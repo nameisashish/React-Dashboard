@@ -42,13 +42,13 @@ The sidebar shows permitted pages only. Hash routes (`#fines`, `#dashboard`, `#i
 
 ### Optional local preview
 
-From `backend/`, run `../.venv/bin/python seed_preview.py` once. It creates **only** `preview.db`, sample records and three preview accounts, printing their generated password. It will not overwrite existing preview accounts. Start the API with:
+From `backend/`, run `../.venv/bin/python seed_preview.py` once. It creates **only** `preview.db`, sample records and three preview accounts, printing their preview credentials. It will not overwrite existing preview accounts. Start the API with:
 
 ```bash
 DATABASE_URL=sqlite:///./preview.db ../.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-Start React as above. Preview email addresses are `user@preview.example.com`, `super@preview.example.com`, and `admin@preview.example.com`. Use the corresponding sign-in option. This is opt-in sample data for local inspection; production startup does not create these accounts. Keep the preview database local.
+Start React as above. Preview email addresses are `viewer@mars.demo` / `Viewer123!`, `reviewer@mars.demo` / `Review123!`, and `admin@mars.demo` / `Admin123!`. Use the corresponding sign-in option. This is opt-in sample data for local inspection; production startup does not create these accounts. Keep the preview database local.
 
 ## Workflow
 
