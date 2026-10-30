@@ -10,12 +10,13 @@ import { SignUpPage } from "./pages/SignUpPage.jsx";
 import { shortDate } from "./utils/fines.js";
 import { authService } from "./services/authService.js";
 import { ImportPage } from "./pages/ImportPage.jsx";
-import { can } from "./services/permissions.js";
+import { UsersPage } from "./pages/UsersPage.jsx";
+import { can, canAccessPage, homePage } from "./services/permissions.js";
 export default function App() {
     const [user, setUser] = useState(null);
     const [authPage, setAuthPage] = useState("login");
     const [authNotice, setAuthNotice] = useState("");
-    const [page, setPage] = useState("dashboard");
+    const [page, setPage] = useState(() => window.location.hash.slice(1) || "dashboard");
     const [records, setRecords] = useState([]);
     const [loading, setLoading] = useState(true);
     const [navFilters, setNavFilters] = useState({});
@@ -24,8 +25,15 @@ export default function App() {
     const [reviewing, setReviewing] = useState(null);
     const [exportState, setExportState] = useState(null);
     const [toast, setToast] = useState(null);
+    const navigate = next => { window.location.hash = next; setPage(next); };
+    const signedIn = account => { setUser(account); navigate(window.location.hash.slice(1) || homePage(account.role)); };
     useEffect(() => {
-        const expired = () => { setUser(null); setRecords([]); setAuthNotice("Your session expired. Please sign in again."); };
+        const syncPage = () => { setPage(window.location.hash.slice(1) || "dashboard"); setSelected(null); setReviewing(null); setExportState(null); };
+        window.addEventListener('hashchange', syncPage);
+        return () => window.removeEventListener('hashchange', syncPage);
+    }, []);
+    useEffect(() => {
+        const expired = () => { setUser(null); setRecords([]); setSelected(null); setReviewing(null); setExportState(null); setAuthNotice("Your session expired. Please sign in again."); };
         window.addEventListener('session-expired', expired);
         if (sessionStorage.getItem('fines-token')) authService.me().then(setUser).catch(expired);
         return () => window.removeEventListener('session-expired', expired);
@@ -114,10 +122,10 @@ export default function App() {
     };
     const navigateFines = (filters) => {
         setNavFilters(filters);
-        setPage("fines");
+        navigate("fines");
     };
     const exportWorkbook = async () => {
-        if (!exportState)
+        if (!exportState || !can(user?.role, "fine:export"))
             return;
         const rows = exportState.records;
         const blob = await finesService.export(rows.map(f => f.fineId));
@@ -138,23 +146,26 @@ export default function App() {
             return (<LoginPage notice={authNotice} onSignUp={() => {
                     setAuthNotice("");
                     setAuthPage("signup");
-                }} onLogin={setUser}/>);
+                }} onLogin={signedIn}/>);
     return (<Layout page={page} user={user} onLogout={async () => {
             try { await authService.logout(); } catch { /* Local session is cleared even if the server is unavailable. */ }
             setRecords([]);
             setUser(null);
+            window.history.replaceState(null, "", window.location.pathname + window.location.search);
             setPage("dashboard");
             setSelected(null);
+            setReviewing(null);
+            setExportState(null);
         }} onNavigate={(next) => {
-            setPage(next);
+            navigate(next);
             if (next === "dashboard")
                 setNavFilters({});
         }}>
-      <div className="workspace-heading"><div><span className="eyebrow red">OPERATIONS / FINANCE</span><p>Fines &amp; Fees · Logistics, warehouse and manufacturing</p></div>{user.role === "Admin" && <button className="btn btn-secondary" onClick={() => setPage(page === 'import' ? 'dashboard' : 'import')}>{page === 'import' ? 'Back to summary' : 'Import dataset'}</button>}</div>
-      {page === 'import' ? <ImportPage onImported={refresh}/> : loading && !records.length ? (<LoadingPage />) : page === "dashboard" ? (<><h1 className="page-title">Executive Summary</h1><DashboardPage records={records} onNavigateFines={navigateFines}/></>) : (<><h1 className="page-title">Fines Details</h1><FinesDetailsPage key={JSON.stringify(navFilters)} records={records} role={user.role} initialFilters={navFilters} onOpen={openFine} onRefresh={refresh} onExport={(fines, filters) => setExportState({ records: fines, filters })}/></>)}
+      <div className="workspace-heading"><div><span className="eyebrow red">OPERATIONS / FINANCE</span><p>Fines &amp; Fees · Logistics, warehouse and manufacturing</p></div>{can(user.role, "dataset:import") && <button className="btn btn-secondary" onClick={() => navigate(page === 'import' ? homePage(user.role) : 'import')}>{page === 'import' ? 'Back to summary' : 'Import dataset'}</button>}</div>
+      {!canAccessPage(user.role, page) ? <section role="alert" className="import-card"><h1>Access restricted</h1><p>Your role does not have permission to open this page.</p><button className="btn btn-primary" onClick={() => navigate(homePage(user.role))}>Go to my workspace</button></section> : page === 'users' ? <UsersPage/> : page === 'import' ? <ImportPage onImported={refresh}/> : loading && !records.length ? (<LoadingPage />) : page === "dashboard" ? (<><h1 className="page-title">Executive Summary</h1><DashboardPage records={records} onNavigateFines={navigateFines}/></>) : (<><h1 className="page-title">Fines Details</h1><FinesDetailsPage key={JSON.stringify(navFilters)} records={records} role={user.role} initialFilters={navFilters} onOpen={openFine} onRefresh={refresh} onExport={(fines, filters) => setExportState({ records: fines, filters })}/></>)}
       {selected && (<FineDrawer fine={selected} role={user.role} history={history} onClose={() => setSelected(null)} onReview={() => setReviewing(selected)}/>)}
-      {reviewing && (<ReviewModal fine={reviewing} role={user.role} onClose={() => setReviewing(null)} onSave={saveReview}/>)}
-      {exportState && (<ExportModal count={exportState.records.length} filters={{
+      {reviewing && can(user.role, "fine:review") && (<ReviewModal fine={reviewing} role={user.role} onClose={() => setReviewing(null)} onSave={saveReview}/>)}
+      {exportState && can(user.role, "fine:export") && (<ExportModal count={exportState.records.length} filters={{
                 date: exportState.filters.fromDate || exportState.filters.toDate
                     ? `${exportState.filters.fromDate
                         ? shortDate(exportState.filters.fromDate)

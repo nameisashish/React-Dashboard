@@ -24,9 +24,31 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. Sign in with the role used for the account. New registrations await administrator approval. Administrators access **User Management** from their profile menu in the lower-left sidebar. User (stored as `Viewer` in the API for compatibility) is the regular user role; Super User can review fines. Admin also approves registrations and imports datasets. Signing out revokes the server session. Sessions expire after eight hours.
+Open http://localhost:5173. Sign in with the role used for the account. New registrations await administrator approval. Administrators access **User Management** from the sidebar. User (stored as `Viewer` in the API for compatibility) is the regular user role; Super User can review fines. Admin also approves registrations and imports datasets. Signing out revokes the server session. Sessions expire after eight hours.
 
 The development proxy forwards `/api` to port 8000. For separate deployment, set `VITE_API_URL` before building, and set `FRONTEND_ORIGIN` on the API to the exact allowed frontend origin (comma-separated for multiple origins). Serve both over HTTPS.
+
+## Page access
+
+| Page/action | User | Super User | Admin |
+| --- | --- | --- | --- |
+| Fines Details, filters and export | Yes | Yes | Yes |
+| Executive Summary | No | Yes | Yes |
+| Review decisions and comments | No | Yes | Yes |
+| Import Dataset | No | No | Yes |
+| User Management and approvals | No | No | Yes |
+
+The sidebar shows permitted pages only. Hash routes (`#fines`, `#dashboard`, `#import`, `#users`) are checked before rendering, including direct links and browser Back/Forward. Unknown routes are denied. FastAPI independently checks permissions for protected operations; changing the browser UI cannot grant API access. The regular User role remains `Viewer` in the API for compatibility. These are role restrictions; there is no customer-specific row ownership model yet.
+
+### Optional local preview
+
+From `backend/`, run `../.venv/bin/python seed_preview.py` once. It creates **only** `preview.db`, sample records and three preview accounts, printing their generated password. It will not overwrite existing preview accounts. Start the API with:
+
+```bash
+DATABASE_URL=sqlite:///./preview.db ../.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+Start React as above. Preview email addresses are `user@preview.example.com`, `super@preview.example.com`, and `admin@preview.example.com`. Use the corresponding sign-in option. This is opt-in sample data for local inspection; production startup does not create these accounts. Keep the preview database local.
 
 ## Workflow
 

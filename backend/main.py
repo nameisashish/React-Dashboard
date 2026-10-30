@@ -43,7 +43,7 @@ def current(credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer
     session = db.get(Session, hashlib.sha256(credentials.credentials.encode()).hexdigest())
     if not session or session.expires_at < now(): fail(401, 'session-expired')
     user = db.get(User, session.user_id)
-    if not user or user.status != 'Approved': fail(403, 'unauthorized')
+    if not user or user.status != 'Approved' or user.role not in ['Admin', 'Super User', 'Viewer']: fail(403, 'unauthorized')
     return user
 
 def admin(user=Depends(current)):
@@ -160,7 +160,7 @@ def fines(status: Optional[Status]=None, customerId: Optional[str]=None, sourceA
     return filtered(db,status,customerId,sourceArea,fromDate,toDate,reason,search)
 
 @app.get('/api/dashboard')
-def dashboard(user=Depends(current), db: DBSession=Depends(get_db)):
+def dashboard(user=Depends(reviewer), db: DBSession=Depends(get_db)):
     rows=filtered(db)
     return {'totalFines':len(rows), 'totalDeductions':sum(Decimal(str(f['fineAmount'])) for f in rows), 'pendingCases':sum(f['status']=='Pending' for f in rows), 'deductionsBySource':{s:sum(Decimal(str(f['fineAmount'])) for f in rows if f['sourceArea']==s) for s in ['Logistics','Warehouse','Manufacturing']}, 'currencyCode':'USD'}
 

@@ -105,3 +105,21 @@ def test_usd_contract(client):
     assert c.get('/api/dashboard',headers=h).json()['currencyCode']=='USD'
     body={'customerId':'C001','fineAmount':'125.50','fineDate':'2026-10-01','reasonCategory':'Missing proof','sourceArea':'Warehouse','currencyCode':'INR'}
     assert c.post('/api/fines',headers=h,json=body).status_code==422
+
+@pytest.mark.parametrize('role,summary,manage,review,import_status', [
+    ('Viewer',403,403,403,403),
+    ('Super User',200,403,200,403),
+    ('Admin',200,200,200,200),
+])
+def test_role_page_and_api_matrix(client,role,summary,manage,review,import_status):
+    c=client; admin=auth(c); fine=record(c,admin); headers=auth(c,role)
+    assert c.get('/api/fines',headers=headers).status_code==200
+    assert c.get('/api/dashboard',headers=headers).status_code==summary
+    assert c.get('/api/users/requests',headers=headers).status_code==manage
+    assert c.post('/api/users/nonexistent/decision',headers=headers,json={'decision':'approve'}).status_code==(409 if role=='Admin' else 403)
+    assert c.post('/api/fines/'+fine['fineId']+'/reviews',headers=headers,json={'decision':'Valid','comment':'Evidence verified','expectedStatus':'Pending','expectedVersion':1}).status_code==review
+    assert c.post('/api/imports/validate',headers=headers,files={'file':('data.xlsx',workbook(100))}).status_code==import_status
+    assert c.post('/api/fines',headers=headers,json={'customerId':'C002','fineAmount':'125.50','fineDate':'2026-10-01','reasonCategory':'Missing proof','sourceArea':'Warehouse'}).status_code==(201 if role=='Admin' else 403)
+
+def test_registration_cannot_request_admin(client):
+    assert client.post('/api/auth/signup',json={'fullName':'Escalation','email':'escalate@example.com','password':'password123','requestedRole':'Admin'}).status_code==422
