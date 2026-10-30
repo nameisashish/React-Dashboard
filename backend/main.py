@@ -88,7 +88,7 @@ class Registration(BaseModel):
 class Login(BaseModel):
     email: EmailStr
     password: str = Field(max_length=128)
-    requestedRole: Role
+    requestedRole: Optional[Role] = None
 
 @app.get('/api/health')
 def health(): return {'status':'ok'}
@@ -117,7 +117,7 @@ def signin(body: Login, db: DBSession=Depends(get_db)):
     if not user or not hasher.verify(body.password, user.password_hash): fail(401, 'invalid-credentials')
     if user.status not in ('Approved',) : fail(403, 'pending' if user.status in ('Pending', 'Pending Approval') else 'rejected')
     if IS_SQLSERVER and not user.is_active: fail(403, 'rejected')
-    if app_role(user.role) != body.requestedRole: fail(403, 'wrong-role')
+    if body.requestedRole and app_role(user.role) != body.requestedRole: fail(403, 'wrong-role')
     token = secrets.token_urlsafe(48)
     expiry = datetime.now(timezone.utc) + timedelta(hours=8)
     if IS_SQLSERVER: expiry = expiry.replace(tzinfo=None)

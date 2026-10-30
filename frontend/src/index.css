@@ -101,9 +101,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .content { padding:10px 10px 70px }.kpi-grid { grid-template-columns:1fr 1fr;gap:8px }.kpi { padding:11px }.kpi>strong { font-size:20px }.filter-bar .field { flex:1 1 100% }.filter-bar .reset { margin-left:0 }.chart-card { padding:14px }.donut-layout { flex-direction:column;height:420px }.donut { width:100%;height:270px }.legend { width:100% }.details-filters .field { flex:1 1 100% }.records-search { flex-direction:column }.records-search>div { width:100% }.records-search>div .btn { flex:1 }.pagination { align-items:flex-start;gap:12px;flex-direction:column }.drawer { width:100% }.details-grid { grid-template-columns:1fr }.details-grid .full { grid-column:auto }.review-record,.decision>div { grid-template-columns:1fr }.review-record>div { border-right:0!important;border-bottom:1px solid var(--border)!important }.review-record>div:last-child { border-bottom:0!important }.login-form-wrap { place-items:start }.modal { max-height:95vh }.overlay { padding:8px }.kpi p { white-space:nowrap;overflow:hidden;text-overflow:ellipsis }.signup-card { padding:24px 18px }.signup-page { padding:14px }
 }
 
-.login-role-actions { display:grid;gap:8px;margin-top:14px }
 .page-title { margin:0 0 18px;font-size:23px;line-height:1.3;font-weight:650;color:var(--text) }
-.login-role-actions .btn { min-height:40px }
 .user-tabs { display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 }
 .users-modal { width:min(100%,1100px) }
 .users-modal .table-wrap { overflow:auto;max-height:55vh }

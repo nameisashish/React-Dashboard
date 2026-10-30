@@ -9,7 +9,6 @@ export function LoginPage({ onLogin, onSignUp, notice, }) {
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const [authError, setAuthError] = useState("");
-    const [requestedRole, setRequestedRole] = useState("Viewer");
     const submit = async (event) => {
         event.preventDefault();
         const next = {};
@@ -22,14 +21,13 @@ export function LoginPage({ onLogin, onSignUp, notice, }) {
             return;
         setLoading(true);
         setAuthError("");
-        const roleForSubmission = event.nativeEvent?.submitter?.value || requestedRole;
         try {
-            const user = await authService.signIn(email, password, roleForSubmission);
+            const user = await authService.signIn(email, password);
             onLogin(user);
         }
         catch (error) {
             const code = error instanceof Error ? error.message : "";
-            setAuthError(code === "wrong-role" ? "This account does not have access to the selected sign-in option. Please choose the correct option for your account." : code === "pending" ? "Your account is awaiting administrator approval. You will be able to sign in after your registration is approved." : code === "rejected" ? "This account has not been approved. Contact your administrator for assistance." : "We could not sign you in with those credentials. Check your details and try again.");
+            setAuthError(code === "pending" ? "Your account is awaiting administrator approval. You will be able to sign in after your registration is approved." : code === "rejected" ? "This account has not been approved. Contact your administrator for assistance." : "We could not sign you in with those credentials. Check your details and try again.");
         }
         finally {
             setLoading(false);
@@ -119,11 +117,9 @@ export function LoginPage({ onLogin, onSignUp, notice, }) {
               </div>
               {errors.password && <small role="alert">{errors.password}</small>}
             </label>
-            <div className="login-role-actions">
-              {["Admin", "Super User", "Viewer"].map(role => (<Button key={role} type="submit" value={role} className="full" variant={role === "Admin" ? "primary" : "secondary"} disabled={loading} onClick={() => setRequestedRole(role)}>
-                  {loading && requestedRole === role ? "Signing in…" : `Sign In as ${role === "Viewer" ? "User" : role}`}
-                </Button>))}
-            </div>
+            <Button type="submit" className="full" disabled={loading}>
+              {loading ? "Signing in…" : "Sign In"}
+            </Button>
           </form>
           <p className="auth-switch">
             Don&apos;t have an account?{" "}
