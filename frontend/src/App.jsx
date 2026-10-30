@@ -27,7 +27,7 @@ export default function App() {
     const [exportState, setExportState] = useState(null);
     const [toast, setToast] = useState(null);
     const navigate = next => { window.location.hash = next; setPage(next); };
-    const signedIn = account => { setUser(account); navigate(window.location.hash.slice(1) || homePage(account.role)); };
+    const signedIn = account => { setAuthNotice(""); setUser(account); navigate(window.location.hash.slice(1) || homePage(account.role)); };
     useEffect(() => {
         const syncPage = () => { setPage(window.location.hash.slice(1) || "dashboard"); setSelected(null); setReviewing(null); setExportState(null); };
         window.addEventListener('hashchange', syncPage);
