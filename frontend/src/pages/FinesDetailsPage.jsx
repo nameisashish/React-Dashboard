@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Button, Card, EmptyState, LoadingPage, SearchField, Select, StatusBadge, } from "../components/ui.jsx";
 
 import { exactMoney, filterFines, shortDate } from "../utils/fines.js";
+import { canReviewFine } from "../services/permissions.js";
 export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExport, onRefresh, }) {
     const [filters, setFilters] = useState({
         reasons: [],
@@ -81,7 +82,7 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
               </option>))}
           </Select>
           <Select label="Operational area" value={filters.sourceArea || ""} onChange={e => update({ sourceArea: e.target.value || undefined })}>
-          <option value="">All areas</option><option>Logistics</option><option>Warehouse</option><option>Manufacturing</option>
+          <option value="">All areas</option><option>Logistics</option><option>Warehouse</option><option>Manufacturing</option><option value="Unknown">Unclassified / Unknown</option>
         </Select>
         <Select label="Fine reason" value={filters.reasons[0] ?? ""} onChange={(e) => update({ reasons: e.target.value ? [e.target.value] : [] })}>
             <option value="">All reasons</option>
@@ -183,7 +184,7 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
                     <td>{shortDate(fine.updatedAt)}</td>
                     <td>
                       <div className="row-actions">
-                        {(role === "Admin" || role === "Super User") ? (<Button variant="secondary" onClick={() => onOpen(fine, true)}>
+                        {canReviewFine(role, fine.status) ? (<Button variant="secondary" onClick={() => onOpen(fine, true)}>
                             Review
                           </Button>) : (<button className="icon-btn" onClick={() => onOpen(fine)} aria-label={`View ${fine.fineId}`}>
                             <MoreHorizontal size={18}/>

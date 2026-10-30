@@ -3,6 +3,7 @@ import { AlertTriangle, Calendar, CheckCircle2, CircleDollarSign, Clock3, FileTe
 import { useState } from "react";
 import { dateTime, exactMoney, shortDate } from "../utils/fines.js";
 import { Button, Modal, StatusBadge } from "./ui.jsx";
+import { canReviewFine } from "../services/permissions.js";
 export function FineDrawer({ fine, role, history, historyError, onClose, onReview, }) {
     const dialogRef = useDialog(onClose);
     const detail = (label, value) => (<div>
@@ -26,7 +27,7 @@ export function FineDrawer({ fine, role, history, historyError, onClose, onRevie
             <strong>{exactMoney(fine.fineAmount)}</strong>
             <span>{fine.currencyCode}</span>
           </div>
-          {(role === "Admin" || role === "Super User") && (<Button onClick={onReview}>Review Fine</Button>)}
+          {canReviewFine(role, fine.status) && (<Button onClick={onReview}>Review Fine</Button>)}
         </div>
         <section>
           <h3>Fine information</h3>
@@ -34,6 +35,7 @@ export function FineDrawer({ fine, role, history, historyError, onClose, onRevie
             {detail("Fine ID", fine.fineId)}
             {detail("Customer", `${fine.customerName} (${fine.customerId})`)}
             {detail("Order reference", fine.orderReference)}
+            {detail("Invoice ID", fine.invoiceId)}
             {detail("Fine date", shortDate(fine.fineDate))}
             {detail("Fine amount", exactMoney(fine.fineAmount))}
             {detail("Currency", fine.currencyCode)}
@@ -48,13 +50,28 @@ export function FineDrawer({ fine, role, history, historyError, onClose, onRevie
           </dl>
         </section>
         <section>
-          <h3>Related information</h3>
+          <h3>Delivery and quantity</h3>
           <dl className="details-grid">
             {detail("Expected delivery", fine.expectedDeliveryDate && shortDate(fine.expectedDeliveryDate))}
             {detail("Actual delivery", fine.actualDeliveryDate && shortDate(fine.actualDeliveryDate))}
             {detail("Ordered quantity", fine.orderedQuantity)}
+            {detail("Produced quantity", fine.producedQuantity)}
+            {detail("Dispatched quantity", fine.dispatchedQuantity)}
             {detail("Delivered quantity", fine.deliveredQuantity)}
-            {detail("Source reference", fine.sourceSystemReference)}
+            <div className="full"><dt>Evidence notes</dt><dd>{fine.reasonDescription || "Not available"}</dd></div>
+          </dl>
+        </section>
+        <section>
+          <h3>Invoice and payment</h3>
+          <dl className="details-grid">
+            {detail("Finance status", fine.financeStatus)}
+            {detail("Invoice amount", fine.invoiceAmount != null ? exactMoney(fine.invoiceAmount) : null)}
+            {detail("Amount received", fine.amountReceived != null ? exactMoney(fine.amountReceived) : null)}
+            {detail("Outstanding balance", fine.invoiceAmount != null ? exactMoney(Math.max(0, fine.invoiceAmount - (fine.amountReceived || 0))) : null)}
+            {detail("Payment due", fine.paymentDueDate && shortDate(fine.paymentDueDate))}
+            {detail("Retailer paid", fine.retailerPaidAt && dateTime(fine.retailerPaidAt))}
+            {detail("Payment received", fine.paymentReceivedAt && dateTime(fine.paymentReceivedAt))}
+            {detail("Payment verified", fine.paymentVerifiedAt && dateTime(fine.paymentVerifiedAt))}
           </dl>
         </section>
         <section>
@@ -125,7 +142,9 @@ export function ReviewModal({ fine, role, onClose, onSave, }) {
         catch (error) {
             setApiError(error instanceof Error && error.message === "conflict"
                 ? "This fine was updated by another reviewer. Refresh the record before continuing."
-                : "We could not save your decision. Your changes have not been confirmed. Please retry.");
+                : error instanceof Error && error.message === "admin-required-for-invalid-review"
+                    ? "Only an Admin can change the review comment or status of an Invalid fine."
+                    : "We could not save your decision. Your changes have not been confirmed. Please retry.");
             setSaving(false);
         }
     };

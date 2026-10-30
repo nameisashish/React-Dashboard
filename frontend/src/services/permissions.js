@@ -1,12 +1,14 @@
 export const rolePermissions = {
-    Admin: ["dashboard:read", "fine:read", "fine:export", "fine:review", "dataset:import", "users:read", "users:approve"],
-    "Super User": ["dashboard:read", "fine:read", "fine:export", "fine:review"],
-    Viewer: ["fine:read", "fine:export"],
+    Admin: ["dashboard:read", "fine:read", "fine:export", "users:read", "users:approve"],
+    "Super User": ["dashboard:read", "fine:read", "fine:export", "fine:review", "dataset:import", "activity:read"],
+    Viewer: ["dashboard:read", "fine:read"],
 };
 export const can = (role, permission) => Boolean(rolePermissions[role]?.includes(permission));
+export const canReviewFine = (role, status) => can(role, 'fine:review') && !(role === 'Super User' && status?.toLowerCase() === 'invalid');
 export const pages = [
     { id: 'dashboard', label: 'Executive Summary', permission: 'dashboard:read' },
     { id: 'fines', label: 'Fines Details', permission: 'fine:read' },
+    { id: 'activity', label: 'Activity Log', permission: 'activity:read' },
     { id: 'import', label: 'Import Dataset', permission: 'dataset:import' },
     { id: 'users', label: 'User Management', permission: 'users:read' },
 ];

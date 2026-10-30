@@ -1,4 +1,4 @@
-import { BarChart3, FileSpreadsheet, LogOut, Menu, ShieldCheck, X, } from "lucide-react";
+import { Activity, BarChart3, FileSpreadsheet, LogOut, Menu, ShieldCheck, X, } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui.jsx";
 import { canAccessPage, pages } from "../services/permissions.js";
@@ -30,7 +30,7 @@ export function Layout({ children, page, user, onNavigate, onLogout, }) {
             document.removeEventListener("keydown", closeEscape);
         };
     }, [profileOpen]);
-    const accessLevel = user.role === "Admin" ? "Full administrative access." : user.role === "Super User" ? "Can view and export fine records and change fine statuses. Cannot manage users." : "Read-only access to fine records and permitted exports.";
+    const accessLevel = user.role === "Admin" ? "Executive dashboard, fine reports, exports, and user approvals." : user.role === "Super User" ? "Operational fine review, dataset imports, exports, and activity log. Invalid fines are locked." : "Read-only access to the dashboard and fine records.";
     return (<div className="app-shell">
       <aside className={menu ? "sidebar open" : "sidebar"}>
         <div className="brand">
@@ -45,7 +45,7 @@ export function Layout({ children, page, user, onNavigate, onLogout, }) {
         </div>
         <nav aria-label="Primary navigation">
           {pages.filter(item => canAccessPage(user.role, item.id)).map(item => <button key={item.id} className={page === item.id ? 'active' : ''} onClick={() => { onNavigate(item.id); setMenu(false); }}>
-            {item.id === 'dashboard' ? <BarChart3 size={19}/> : item.id === 'users' ? <ShieldCheck size={19}/> : <FileSpreadsheet size={19}/>}
+            {item.id === 'dashboard' ? <BarChart3 size={19}/> : item.id === 'users' ? <ShieldCheck size={19}/> : item.id === 'activity' ? <Activity size={19}/> : item.id === 'import' ? <FileSpreadsheet size={19}/> : <FileSpreadsheet size={19}/>}
             <span>{item.label}</span>
           </button>)}
         </nav>

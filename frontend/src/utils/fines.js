@@ -4,15 +4,15 @@ export const money = (value, currency = "USD") => new Intl.NumberFormat("en-US",
     maximumFractionDigits: 0,
 }).format(value);
 export const exactMoney = (value, currency = "USD") => new Intl.NumberFormat("en-US", { style: "currency", currency }).format(value);
-export const shortDate = (value) => new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-}).format(new Date(value));
-export const dateTime = (value) => new Intl.DateTimeFormat("en-US", {
+export const shortDate = (value) => {
+    const text = String(value ?? "");
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(text) ? new Date(`${text}T00:00:00`) : new Date(value);
+    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
+};
+export const dateTime = (value) => value ? new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
-}).format(new Date(value));
+}).format(new Date(value)) : "Not available";
 export function filterFines(records, filters) {
     const query = filters.search?.trim().toLowerCase();
     return records.filter((fine) => {
@@ -34,7 +34,7 @@ export function filterFines(records, filters) {
                 fine.customerId,
                 fine.customerName,
                 fine.orderReference,
-            ].some((v) => v.toLowerCase().includes(query)));
+            ].some((v) => String(v ?? "").toLowerCase().includes(query)));
     });
 }
 export const aggregateStatuses = (records) => ["Valid", "Invalid", "Pending"].map((status) => ({
@@ -56,12 +56,13 @@ export const aggregateReasons = (records) => Array.from(new Set(records.map((f) 
 export function aggregateMonths(records) {
     const map = new Map();
     records.forEach((fine) => {
-        const date = new Date(fine.fineDate);
-        const sort = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        const sort = String(fine.fineDate).slice(0, 7);
+        const [year, monthNumber] = sort.split("-").map(Number);
         const row = map.get(sort) ?? {
-            month: date.toLocaleDateString("en-US", {
+            month: new Date(Date.UTC(year, monthNumber - 1, 1)).toLocaleDateString("en-US", {
                 month: "short",
                 year: "2-digit",
+                timeZone: "UTC",
             }),
             count: 0,
             amount: 0,
@@ -71,7 +72,23 @@ export function aggregateMonths(records) {
         row.amount += fine.fineAmount;
         map.set(sort, row);
     });
-    return [...map.values()].sort((a, b) => a.sort.localeCompare(b.sort));
+    const months = [...map.keys()].sort();
+    if (!months.length) return [];
+    const [firstYear, firstMonth] = months[0].split("-").map(Number);
+    const [lastYear, lastMonth] = months.at(-1).split("-").map(Number);
+    const result = [];
+    for (let index = firstYear * 12 + firstMonth - 1; index <= lastYear * 12 + lastMonth - 1; index++) {
+        const year = Math.floor(index / 12);
+        const monthNumber = index % 12 + 1;
+        const sort = `${year}-${String(monthNumber).padStart(2, "0")}`;
+        result.push(map.get(sort) ?? {
+            month: new Date(Date.UTC(year, monthNumber - 1, 1)).toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" }),
+            count: 0,
+            amount: 0,
+            sort,
+        });
+    }
+    return result;
 }
 export const last12Months = () => {
     const to = new Date();

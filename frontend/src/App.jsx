@@ -11,7 +11,8 @@ import { shortDate } from "./utils/fines.js";
 import { authService } from "./services/authService.js";
 import { ImportPage } from "./pages/ImportPage.jsx";
 import { UsersPage } from "./pages/UsersPage.jsx";
-import { can, canAccessPage, homePage } from "./services/permissions.js";
+import { ActivityPage } from "./pages/ActivityPage.jsx";
+import { can, canAccessPage, canReviewFine, homePage } from "./services/permissions.js";
 export default function App() {
     const [user, setUser] = useState(null);
     const [authPage, setAuthPage] = useState("login");
@@ -108,13 +109,13 @@ export default function App() {
     };
     const openFine = (fine, review = false) => {
         setSelected(fine);
-        if (review && user && can(user.role, "fine:review"))
+        if (review && user && canReviewFine(user.role, fine.status))
             setReviewing(fine);
     };
     const saveReview = async (request) => {
         if (!reviewing)
             return;
-        if (!user || !can(user.role, "fine:review"))
+        if (!user || !canReviewFine(user.role, reviewing.status))
             throw new Error("unauthorized");
         const updated = await finesService.review(reviewing.fineId, request, user);
         setRecords((all) => all.map((fine) => (fine.fineId === updated.fineId ? updated : fine)));
@@ -165,9 +166,9 @@ export default function App() {
                 setNavFilters({});
         }}>
       <div className="workspace-heading"><div><span className="eyebrow red">OPERATIONS / FINANCE</span><p>Fines &amp; Fees · Logistics, warehouse and manufacturing</p></div>{can(user.role, "dataset:import") && <button className="btn btn-secondary" onClick={() => navigate(page === 'import' ? homePage(user.role) : 'import')}>{page === 'import' ? 'Back to summary' : 'Import dataset'}</button>}</div>
-      {!canAccessPage(user.role, page) ? <section role="alert" className="import-card"><h1>Access restricted</h1><p>Your role does not have permission to open this page.</p><button className="btn btn-primary" onClick={() => navigate(homePage(user.role))}>Go to my workspace</button></section> : page === 'users' ? <UsersPage/> : page === 'import' ? <ImportPage onImported={refresh}/> : loading && !records.length ? (<LoadingPage />) : page === "dashboard" ? (<><h1 className="page-title">Executive Summary</h1><DashboardPage records={records} onNavigateFines={navigateFines}/></>) : (<><h1 className="page-title">Fines Details</h1><FinesDetailsPage key={JSON.stringify(navFilters)} records={records} role={user.role} initialFilters={navFilters} onOpen={openFine} onRefresh={refresh} onExport={(fines, filters) => setExportState({ records: fines, filters })}/></>)}
+      {!canAccessPage(user.role, page) ? <section role="alert" className="import-card"><h1>Access restricted</h1><p>Your role does not have permission to open this page.</p><button className="btn btn-primary" onClick={() => navigate(homePage(user.role))}>Go to my workspace</button></section> : page === 'users' ? <UsersPage/> : page === 'activity' ? <ActivityPage/> : page === 'import' ? <ImportPage onImported={refresh}/> : loading && !records.length ? (<LoadingPage />) : page === "dashboard" ? (<><h1 className="page-title">Executive Summary</h1><DashboardPage records={records} role={user.role} onNavigate={navigate} onNavigateFines={navigateFines}/></>) : (<><h1 className="page-title">Fines Details</h1><FinesDetailsPage key={JSON.stringify(navFilters)} records={records} role={user.role} initialFilters={navFilters} onOpen={openFine} onRefresh={refresh} onExport={(fines, filters) => setExportState({ records: fines, filters })}/></>)}
       {selected && (<FineDrawer fine={selected} role={user.role} history={history} historyError={historyError} onClose={() => setSelected(null)} onReview={() => setReviewing(selected)}/>)}
-      {reviewing && can(user.role, "fine:review") && (<ReviewModal fine={reviewing} role={user.role} onClose={() => setReviewing(null)} onSave={saveReview}/>)}
+      {reviewing && canReviewFine(user.role, reviewing.status) && (<ReviewModal fine={reviewing} role={user.role} onClose={() => setReviewing(null)} onSave={saveReview}/>)}
       {exportState && can(user.role, "fine:export") && (<ExportModal count={exportState.records.length} filters={{
                 date: exportState.filters.fromDate || exportState.filters.toDate
                     ? `${exportState.filters.fromDate
