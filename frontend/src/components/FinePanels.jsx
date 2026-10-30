@@ -80,7 +80,7 @@ export function FineDrawer({ fine, role, history, historyError, onClose, onRevie
               {detail("Last reviewer", fine.lastReviewerName)}
               {detail("Review date", dateTime(fine.lastReviewedAt))}
               <div className="full">
-                <dt>Latest comment</dt>
+                <dt>{fine.status?.toLowerCase() === "invalid" ? "Reason marked invalid" : "Latest review comment"}</dt>
                 <dd>{fine.lastReviewComment}</dd>
               </div>
             </dl>) : (<div className="no-history">
@@ -121,7 +121,7 @@ export function ReviewModal({ fine, role, onClose, onSave, }) {
         if (!decision)
             next.decision = "Select a target status.";
         if (!comment.trim())
-            next.comment = "Please enter a review comment.";
+            next.comment = decision === "Invalid" ? "Enter a reason for marking this fine invalid." : "Please enter a review comment.";
         if (comment.length > 1000)
             next.comment = "Comment must be 1,000 characters or fewer.";
         if (role === "Viewer")
@@ -188,7 +188,7 @@ export function ReviewModal({ fine, role, onClose, onSave, }) {
           <legend>
             Review Decision <span>*</span>
           </legend>
-          <p>Select the target status for this fine.</p>
+          <p>This fine is pending review. Choose the final status.</p>
           <div>
             <label className={decision === "Valid" ? "selected valid" : ""}>
               <input type="radio" name="decision" value="Valid" checked={decision === "Valid"} onChange={() => setDecision("Valid")}/>
@@ -203,22 +203,21 @@ export function ReviewModal({ fine, role, onClose, onSave, }) {
               <AlertTriangle />
               <span>
                 <strong>Invalid</strong>
-                <small>Mark the fine classification as invalid.</small>
+                <small>A reason is required to mark this fine invalid.</small>
               </span>
             </label>
-            <label className={decision === "Pending" ? "selected" : ""}><input type="radio" name="decision" value="Pending" checked={decision === "Pending"} onChange={() => setDecision("Pending")}/><Clock3 /><span><strong>Pending</strong><small>Return this fine to the pending queue.</small></span></label>
           </div>
           {errors.decision && (<small className="field-error">{errors.decision}</small>)}
         </fieldset>
         <label className="comment-field">
           <span>
-            Reviewer Comment <b>*</b>
+            {decision === "Invalid" ? "Reason for marking invalid" : "Review comment"} <b>*</b>
           </span>
-          <textarea value={comment} onChange={(e) => setComment(e.target.value)} maxLength={1000} placeholder="Explain the reason for your decision…" aria-invalid={!!errors.comment}/>
+          <textarea value={comment} onChange={(e) => setComment(e.target.value)} maxLength={1000} placeholder={decision === "Invalid" ? "Explain why this fine is invalid…" : "Explain your decision…"} aria-invalid={!!errors.comment}/>
           <div>
             <small className={errors.comment ? "field-error" : ""}>
               {errors.comment ??
-            "Provide a clear explanation to document this review."}
+            (decision === "Invalid" ? "A clear reason is required and will be saved with the decision." : "Provide a clear explanation to document this review.")}
             </small>
             <small>{comment.length}/1,000</small>
           </div>

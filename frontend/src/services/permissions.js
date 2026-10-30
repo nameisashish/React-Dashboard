@@ -4,7 +4,7 @@ export const rolePermissions = {
     Viewer: ["dashboard:read", "fine:read"],
 };
 export const can = (role, permission) => Boolean(rolePermissions[role]?.includes(permission));
-export const canReviewFine = (role, status) => can(role, 'fine:review') && !(role === 'Super User' && status?.toLowerCase() === 'invalid');
+export const canReviewFine = (role, status) => can(role, 'fine:review') && status?.toLowerCase() === 'pending';
 export const pages = [
     { id: 'dashboard', label: 'Executive Summary', permission: 'dashboard:read' },
     { id: 'fines', label: 'Fines Details', permission: 'fine:read' },

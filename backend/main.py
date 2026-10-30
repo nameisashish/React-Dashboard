@@ -335,8 +335,10 @@ def review(fine_id: str, body: Decision, user=Depends(reviewer), db: DBSession=D
     fine_key = int(fine_id) if IS_SQLSERVER and fine_id.isdigit() else fine_id
     fine=db.get(Fine,fine_key)
     if not fine: fail(404,'not-found')
-    if app_role(user.role) == 'Super User' and str(fine.status).lower() == 'invalid':
-        fail(403,'admin-required-for-invalid-review')
+    if str(fine.status).lower() != 'pending':
+        fail(409,'review-only-pending-fines')
+    if body.decision == 'Invalid' and not body.comment.strip():
+        fail(422,'invalid-reason-required')
     stamp=now()
     if IS_SQLSERVER:
         if fine.status != body.expectedStatus or fine.version != body.expectedVersion: fail(409, 'conflict')
