@@ -1,7 +1,7 @@
 import { useFines } from "../services/useFines.js";
 import { ArrowDown, ArrowUp, Download, FilterX, RefreshCw, } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, EmptyState, LoadingPage, SearchField, Select, StatusBadge, } from "../components/ui.jsx";
+import { Button, Card, EmptyState, LoadingPage, Select, StatusBadge, } from "../components/ui.jsx";
 
 import { exactMoney, filterFines, shortDate } from "../utils/fines.js";
 export function FinesDetailsPage({ records, filters, onApplyFilters, onOpen, onExport, onRefresh, }) {
@@ -30,11 +30,11 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onOpen, onE
         setPage(1);
     };
     const clearFilters = () => {
-        setDraftFilters({ search: "", reasons: [] });
+        setDraftFilters({ reasons: [] });
         setPage(1);
     };
     const clearAndApply = () => {
-        const cleared = { search: "", reasons: [] };
+        const cleared = { reasons: [] };
         clearFilters();
         onApplyFilters(cleared);
     };
@@ -49,7 +49,6 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onOpen, onE
       {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. <Button onClick={remote.retry}>Retry</Button></p>}
       <Card className="records-card sticky-filters records-filters">
         <div className="records-search">
-          <SearchField value={draftFilters.search ?? ""} onChange={(search) => update({ search })} placeholder="Search Fine ID, Customer ID, or Order Reference…"/>
           <div>
             <Button variant="secondary" onClick={onRefresh}>
               <RefreshCw size={16}/>
@@ -99,8 +98,7 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onOpen, onE
         </div>
         {(filters.sourceArea || filters.status ||
             filters.customerId ||
-            filters.reasons.length > 0 ||
-            filters.search) && (<div className="filter-chips">
+            filters.reasons.length > 0) && (<div className="filter-chips">
             <span>Active filters:</span>
             {filters.sourceArea && <button onClick={() => update({ sourceArea: undefined })}>Area: {filters.sourceArea} ×</button>}
             {filters.status && (<button onClick={() => update({ status: undefined })}>
@@ -112,9 +110,6 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onOpen, onE
             {filters.reasons.map((reason) => (<button key={reason} onClick={() => update({ reasons: [] })}>
                 {reason} ×
               </button>))}
-            {filters.search && (<button onClick={() => update({ search: "" })}>
-                Search: “{filters.search}” ×
-              </button>)}
           </div>)}
       </Card>
       <Card className="records-card table-card">

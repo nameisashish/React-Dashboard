@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowRight, CircleDollarSign, Clock3, FileText, RotateCcw, ShieldCheck, Activity } from "lucide-react";
 import { ReasonsChart, FinanceSettlementChart, StatusDistribution, TrendChart, ValidationByAreaChart } from "../components/charts.jsx";
-import { Button, Card, EmptyState, LoadingPage, SearchField, Select } from "../components/ui.jsx";
+import { Button, Card, EmptyState, LoadingPage, Select } from "../components/ui.jsx";
 import { finesService } from "../services/finesService.js";
 import { useFines } from "../services/useFines.js";
 import { filterFines, money } from "../utils/fines.js";
 
-const emptyFilters = { search: "", status: undefined, customerId: undefined, sourceArea: undefined, reasons: [] };
+const emptyFilters = { status: undefined, customerId: undefined, sourceArea: undefined, reasons: [] };
 const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
 const presetRange = preset => {
@@ -80,7 +80,6 @@ export function DashboardPage({ records, onNavigateFines, onNavigate, role, filt
     return <>
       {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. <Button onClick={remote.retry}>Retry</Button></p>}
       <Card className="filter-bar sticky-filters">
-        <SearchField value={draftFilters.search ?? ""} onChange={search => setDraftFilters(f => ({ ...f, search }))} placeholder="Search fine ID, customer, or order"/>
         <Select label="Fine date" value={datePreset} onChange={e => { setDatePreset(e.target.value); if (e.target.value !== "custom") updatePreset(e.target.value); }}>
           <option value="all">All dates</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="12">Last 12 months</option><option value="year">This year</option><option value="custom">Custom range</option>
         </Select>

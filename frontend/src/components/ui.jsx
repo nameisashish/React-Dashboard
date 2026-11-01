@@ -19,16 +19,6 @@ export function Select({ label, className = "", ...props }) {
       </span>
     </label>);
 }
-export function SearchField({ value, onChange, placeholder, }) {
-    return (<label className="search-field">
-      <Search size={18} aria-hidden="true"/>
-      <span className="sr-only">Search fines</span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}/>
-      {value && (<button type="button" onClick={() => onChange("")} aria-label="Clear search">
-          <X size={16}/>
-        </button>)}
-    </label>);
-}
 export function Card({ children, className = "", }) {
     return <section className={`card ${className}`}>{children}</section>;
 }

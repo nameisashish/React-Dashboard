@@ -20,7 +20,7 @@ export default function App() {
     const [page, setPage] = useState(() => window.location.hash.slice(1) || "dashboard");
     const [records, setRecords] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({ search: "", reasons: [] });
+    const [filters, setFilters] = useState({ reasons: [] });
     const [selected, setSelected] = useState(null);
     const [historyError, setHistoryError] = useState("");
     const [history, setHistory] = useState([]);
@@ -153,7 +153,7 @@ export default function App() {
     return (<Layout page={page} user={user} onLogout={async () => {
             try { await authService.logout(); } catch { /* Local session is cleared even if the server is unavailable. */ }
             setRecords([]);
-            setFilters({ search: "", reasons: [] });
+            setFilters({ reasons: [] });
             setUser(null);
             window.history.replaceState(null, "", window.location.pathname + window.location.search);
             setPage("dashboard");
@@ -179,7 +179,6 @@ export default function App() {
                 customer: exportState.filters.customerId ?? "All",
                 area: exportState.filters.sourceArea || "All",
                 reason: exportState.filters.reasons.join(", ") || "All",
-                search: exportState.filters.search ?? "",
             }} onClose={() => setExportState(null)} onExport={exportWorkbook}/>)}
       {toast && <Toast {...toast} onClose={() => setToast(null)}/>}
     </Layout>);
