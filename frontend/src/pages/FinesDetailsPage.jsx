@@ -1,21 +1,18 @@
 import { useFines } from "../services/useFines.js";
-import { ArrowDown, ArrowUp, Download, FilterX, MoreHorizontal, RefreshCw, } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, Download, FilterX, RefreshCw, } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Card, EmptyState, LoadingPage, SearchField, Select, StatusBadge, } from "../components/ui.jsx";
 
 import { exactMoney, filterFines, shortDate } from "../utils/fines.js";
-import { canReviewFine } from "../services/permissions.js";
-export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExport, onRefresh, }) {
-    const [filters, setFilters] = useState({
-        reasons: [],
-        ...initialFilters,
-    });
+export function FinesDetailsPage({ records, filters, onApplyFilters, onOpen, onExport, onRefresh, }) {
+    const [draftFilters, setDraftFilters] = useState(filters);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [sort, setSort] = useState({
         field: "fineDate",
         direction: "desc",
     });
+    useEffect(() => { setDraftFilters(filters); setPage(1); }, [filters]);
     const reasons = [...new Set(records.map(f => f.reasonCategory))];
     const customers = Array.from(new Map(records.map((f) => [f.customerId, f.customerName])));
     const remote = useFines(filters, records);
@@ -29,13 +26,19 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
     const currentPage = Math.min(page, maxPage);
     const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
     const update = (partial) => {
-        setFilters((f) => ({ ...f, ...partial }));
+        setDraftFilters((f) => ({ ...f, ...partial }));
         setPage(1);
     };
     const clearFilters = () => {
-        setFilters({ reasons: [] });
+        setDraftFilters({ search: "", reasons: [] });
         setPage(1);
     };
+    const clearAndApply = () => {
+        const cleared = { search: "", reasons: [] };
+        clearFilters();
+        onApplyFilters(cleared);
+    };
+    const filtersChanged = JSON.stringify(draftFilters) !== JSON.stringify(filters);
     const toggleSort = (field) => setSort((s) => ({
         field,
         direction: s.field === field && s.direction === "desc" ? "asc" : "desc",
@@ -46,7 +49,7 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
       {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. <Button onClick={remote.retry}>Retry</Button></p>}
       <Card className="records-card sticky-filters records-filters">
         <div className="records-search">
-          <SearchField value={filters.search ?? ""} onChange={(search) => update({ search })} placeholder="Search Fine ID, Customer ID, or Order Reference…"/>
+          <SearchField value={draftFilters.search ?? ""} onChange={(search) => update({ search })} placeholder="Search Fine ID, Customer ID, or Order Reference…"/>
           <div>
             <Button variant="secondary" onClick={onRefresh}>
               <RefreshCw size={16}/>
@@ -61,13 +64,13 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
         <div className="details-filters">
           <label className="field">
             <span>From date</span>
-            <input type="date" value={filters.fromDate ?? ""} onChange={(e) => update({ fromDate: e.target.value || undefined })}/>
+            <input type="date" value={draftFilters.fromDate ?? ""} onChange={(e) => update({ fromDate: e.target.value || undefined })}/>
           </label>
           <label className="field">
             <span>To date</span>
-            <input type="date" value={filters.toDate ?? ""} onChange={(e) => update({ toDate: e.target.value || undefined })}/>
+            <input type="date" value={draftFilters.toDate ?? ""} onChange={(e) => update({ toDate: e.target.value || undefined })}/>
           </label>
-          <Select label="Status" value={filters.status ?? ""} onChange={(e) => update({
+          <Select label="Status" value={draftFilters.status ?? ""} onChange={(e) => update({
             status: e.target.value || undefined,
         })}>
             <option value="">All statuses</option>
@@ -75,16 +78,16 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
             <option>Invalid</option>
             <option>Pending</option>
           </Select>
-          <Select label="Customer" value={filters.customerId ?? ""} onChange={(e) => update({ customerId: e.target.value || undefined })}>
+          <Select label="Customer" value={draftFilters.customerId ?? ""} onChange={(e) => update({ customerId: e.target.value || undefined })}>
             <option value="">All customers</option>
             {customers.map(([id, name]) => (<option key={id} value={id}>
                 {name}
               </option>))}
           </Select>
-          <Select label="Operational area" value={filters.sourceArea || ""} onChange={e => update({ sourceArea: e.target.value || undefined })}>
+        <Select label="Operational area" value={draftFilters.sourceArea || ""} onChange={e => update({ sourceArea: e.target.value || undefined })}>
           <option value="">All areas</option><option>Logistics</option><option>Warehouse</option><option>Manufacturing</option><option value="Unknown">Unclassified / Unknown</option>
         </Select>
-        <Select label="Fine reason" value={filters.reasons[0] ?? ""} onChange={(e) => update({ reasons: e.target.value ? [e.target.value] : [] })}>
+        <Select label="Fine reason" value={draftFilters.reasons[0] ?? ""} onChange={(e) => update({ reasons: e.target.value ? [e.target.value] : [] })}>
             <option value="">All reasons</option>
             {reasons.map((reason) => (<option key={reason}>{reason}</option>))}
           </Select>
@@ -92,6 +95,7 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
             <FilterX size={16}/>
             Clear all
           </Button>
+          <Button className="apply-filters" disabled={!filtersChanged} onClick={() => onApplyFilters(draftFilters)}>Apply</Button>
         </div>
         {(filters.sourceArea || filters.status ||
             filters.customerId ||
@@ -128,7 +132,7 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
             </select>
           </label>
         </div>
-        {remote.loading ? <LoadingPage/> : remote.error ? <p className="empty-state">Use Retry to load records.</p> : !filtered.length ? (<EmptyState action={<Button onClick={clearFilters}>
+        {remote.loading ? <LoadingPage/> : remote.error ? <p className="empty-state">Use Retry to load records.</p> : !filtered.length ? (<EmptyState action={<Button onClick={clearAndApply}>
                 Clear filters
               </Button>}/>) : (<div className="table-wrap main-table">
             <table>
@@ -151,9 +155,6 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
                   <th>Fine reason</th>
                   <th>Status</th>
                   <th>Updated</th>
-                  <th>
-                    <span className="sr-only">Actions</span>
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -182,15 +183,6 @@ export function FinesDetailsPage({ records, role, initialFilters, onOpen, onExpo
                       <StatusBadge status={fine.status}/>
                     </td>
                     <td>{shortDate(fine.updatedAt)}</td>
-                    <td>
-                      <div className="row-actions">
-                        {canReviewFine(role, fine.status) ? (<Button variant="secondary" onClick={() => onOpen(fine, true)}>
-                            Review
-                          </Button>) : (<button className="icon-btn" onClick={() => onOpen(fine)} aria-label={`View ${fine.fineId}`}>
-                            <MoreHorizontal size={18}/>
-                          </button>)}
-                      </div>
-                    </td>
                   </tr>))}
               </tbody>
             </table>

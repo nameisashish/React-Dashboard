@@ -1,23 +1,48 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowRight, CircleDollarSign, Clock3, FileText, RotateCcw, ShieldCheck, Activity } from "lucide-react";
 import { ReasonsChart, FinanceSettlementChart, StatusDistribution, TrendChart, ValidationByAreaChart } from "../components/charts.jsx";
-import { Button, Card, EmptyState, LoadingPage, Select } from "../components/ui.jsx";
+import { Button, Card, EmptyState, LoadingPage, SearchField, Select } from "../components/ui.jsx";
 import { finesService } from "../services/finesService.js";
 import { useFines } from "../services/useFines.js";
 import { filterFines, money } from "../utils/fines.js";
 
-const emptyFilters = { status: undefined, customerId: undefined, sourceArea: undefined, reasons: [] };
+const emptyFilters = { search: "", status: undefined, customerId: undefined, sourceArea: undefined, reasons: [] };
 const localDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-export function DashboardPage({ records, onNavigateFines, onNavigate, role }) {
-    const [filters, setFilters] = useState(emptyFilters);
-    const [datePreset, setDatePreset] = useState("all");
+const presetRange = preset => {
+    if (preset === "all") return { fromDate: undefined, toDate: undefined };
+    const to = new Date();
+    const from = new Date();
+    if (preset === "30") from.setDate(from.getDate() - 30);
+    else if (preset === "90") from.setDate(from.getDate() - 90);
+    else if (preset === "year") from.setMonth(0, 1);
+    else from.setFullYear(from.getFullYear() - 1);
+    return { fromDate: localDate(from), toDate: localDate(to) };
+};
+const selectedPreset = filters => {
+    if (!filters.fromDate && !filters.toDate) return "all";
+    for (const preset of ["30", "90", "12", "year"]) {
+        const range = presetRange(preset);
+        if (range.fromDate === filters.fromDate && range.toDate === filters.toDate) return preset;
+    }
+    return "custom";
+};
+
+export function DashboardPage({ records, onNavigateFines, onNavigate, role, filters, onApplyFilters }) {
+    const [draftFilters, setDraftFilters] = useState(filters);
+    const [datePreset, setDatePreset] = useState(() => selectedPreset(filters));
     const [overview, setOverview] = useState(null);
     const [overviewError, setOverviewError] = useState("");
     const [overviewLoading, setOverviewLoading] = useState(true);
-    const resetFilters = () => { setFilters(emptyFilters); setDatePreset("all"); };
+    useEffect(() => {
+        setDraftFilters(filters);
+        setDatePreset(selectedPreset(filters));
+    }, [filters]);
+    const resetFilters = () => { setDraftFilters(emptyFilters); setDatePreset("all"); };
+    const clearAndApply = () => { resetFilters(); onApplyFilters(emptyFilters); };
     const remote = useFines(filters, records);
     const filtered = useMemo(() => filterFines(remote.rows, filters), [remote.rows, filters]);
+    const filtersChanged = JSON.stringify(draftFilters) !== JSON.stringify(filters);
 
     useEffect(() => {
         let active = true;
@@ -50,39 +75,31 @@ export function DashboardPage({ records, onNavigateFines, onNavigate, role }) {
         return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi) || a.localeCompare(b);
     });
 
-    const updatePreset = preset => {
-        if (preset === "all") {
-            setFilters(f => ({ ...f, fromDate: undefined, toDate: undefined }));
-            return;
-        }
-        const to = new Date();
-        const from = new Date();
-        if (preset === "30") from.setDate(from.getDate() - 30);
-        else if (preset === "90") from.setDate(from.getDate() - 90);
-        else if (preset === "year") from.setMonth(0, 1);
-        else from.setFullYear(from.getFullYear() - 1);
-        setFilters(f => ({ ...f, fromDate: localDate(from), toDate: localDate(to) }));
-    };
+    const updatePreset = preset => setDraftFilters(f => ({ ...f, ...presetRange(preset) }));
 
     return <>
       {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. <Button onClick={remote.retry}>Retry</Button></p>}
       <Card className="filter-bar sticky-filters">
-        <Select label="Fine date" value={datePreset} onChange={e => { setDatePreset(e.target.value); updatePreset(e.target.value); }}>
-          <option value="all">All dates</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="12">Last 12 months</option><option value="year">This year</option>
+        <SearchField value={draftFilters.search ?? ""} onChange={search => setDraftFilters(f => ({ ...f, search }))} placeholder="Search fine ID, customer, or order"/>
+        <Select label="Fine date" value={datePreset} onChange={e => { setDatePreset(e.target.value); if (e.target.value !== "custom") updatePreset(e.target.value); }}>
+          <option value="all">All dates</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="12">Last 12 months</option><option value="year">This year</option><option value="custom">Custom range</option>
         </Select>
-        <Select label="Validation status" value={filters.status ?? ""} onChange={e => setFilters({ ...filters, status: e.target.value || undefined })}>
+        <label className="field"><span>From date</span><input type="date" value={draftFilters.fromDate ?? ""} onChange={e => { setDatePreset("custom"); setDraftFilters(f => ({ ...f, fromDate: e.target.value || undefined })); }}/></label>
+        <label className="field"><span>To date</span><input type="date" value={draftFilters.toDate ?? ""} onChange={e => { setDatePreset("custom"); setDraftFilters(f => ({ ...f, toDate: e.target.value || undefined })); }}/></label>
+        <Select label="Validation status" value={draftFilters.status ?? ""} onChange={e => setDraftFilters({ ...draftFilters, status: e.target.value || undefined })}>
           <option value="">All statuses</option><option>Valid</option><option>Invalid</option><option>Pending</option>
         </Select>
-        <Select label="Customer" value={filters.customerId ?? ""} onChange={e => setFilters({ ...filters, customerId: e.target.value || undefined })}>
+        <Select label="Customer" value={draftFilters.customerId ?? ""} onChange={e => setDraftFilters({ ...draftFilters, customerId: e.target.value || undefined })}>
           <option value="">All customers</option>{customers.map(([id, name]) => <option key={id} value={id}>{name} ({id})</option>)}
         </Select>
-        <Select label="Operational area" value={filters.sourceArea || ""} onChange={e => setFilters(f => ({ ...f, sourceArea: e.target.value || undefined }))}>
+        <Select label="Operational area" value={draftFilters.sourceArea || ""} onChange={e => setDraftFilters(f => ({ ...f, sourceArea: e.target.value || undefined }))}>
           <option value="">All areas</option>{sources.map(source => <option key={source} value={source}>{source === "Unknown" ? "Unclassified / Unknown" : source}</option>)}
         </Select>
-        <Select label="Fine reason" value={filters.reasons[0] ?? ""} onChange={e => setFilters({ ...filters, reasons: e.target.value ? [e.target.value] : [] })}>
+        <Select label="Fine reason" value={draftFilters.reasons[0] ?? ""} onChange={e => setDraftFilters({ ...draftFilters, reasons: e.target.value ? [e.target.value] : [] })}>
           <option value="">All reasons</option>{reasons.map(reason => <option key={reason}>{reason}</option>)}
         </Select>
         <Button variant="ghost" className="reset" onClick={resetFilters}><RotateCcw size={16}/>Reset</Button>
+        <Button className="apply-filters" disabled={!filtersChanged} onClick={() => onApplyFilters(draftFilters)}>Apply</Button>
       </Card>
 
       {remote.loading ? <LoadingPage/> : remote.error ? null : <>
@@ -109,7 +126,7 @@ export function DashboardPage({ records, onNavigateFines, onNavigate, role }) {
 
         <div className="queue-banner"><div><strong>Pending validation queue</strong><p>{role === "Super User" ? "Review pending cases and record a reasoned status change." : "View pending cases. Status changes are reserved for Super Users."}</p></div><Button variant="secondary" onClick={() => onNavigateFines({ ...filters, status: "Pending" })}>{role === "Super User" ? "Review" : "View"} {pending.length} pending cases</Button></div>
 
-        {!filtered.length ? <Card><EmptyState action={<Button onClick={resetFilters}>Clear filters</Button>}/></Card> : <div className="chart-grid">
+        {!filtered.length ? <Card><EmptyState action={<Button onClick={clearAndApply}>Clear filters</Button>}/></Card> : <div className="chart-grid">
           <StatusDistribution records={filtered}/><FinanceSettlementChart records={filtered}/>
           <ValidationByAreaChart records={filtered} onSelect={sourceArea => onNavigateFines({ ...filters, sourceArea })}/>
           <ReasonsChart records={filtered} onSelect={reason => onNavigateFines({ ...filters, reasons: [reason] })}/>
