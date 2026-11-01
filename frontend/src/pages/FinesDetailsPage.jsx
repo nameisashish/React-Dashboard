@@ -30,13 +30,10 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onOpen, onE
         setPage(1);
     };
     const clearFilters = () => {
-        setDraftFilters({ reasons: [] });
-        setPage(1);
-    };
-    const clearAndApply = () => {
         const cleared = { reasons: [] };
-        clearFilters();
+        setDraftFilters(cleared);
         onApplyFilters(cleared);
+        setPage(1);
     };
     const filtersChanged = JSON.stringify(draftFilters) !== JSON.stringify(filters);
     const toggleSort = (field) => setSort((s) => ({
@@ -127,7 +124,7 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onOpen, onE
             </select>
           </label>
         </div>
-        {remote.loading ? <LoadingPage/> : remote.error ? <p className="empty-state">Use Retry to load records.</p> : !filtered.length ? (<EmptyState action={<Button onClick={clearAndApply}>
+        {remote.loading ? <LoadingPage/> : remote.error ? <p className="empty-state">Use Retry to load records.</p> : !filtered.length ? (<EmptyState action={<Button onClick={clearFilters}>
                 Clear filters
               </Button>}/>) : (<div className="table-wrap main-table">
             <table>

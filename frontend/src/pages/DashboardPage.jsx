@@ -38,8 +38,11 @@ export function DashboardPage({ records, onNavigateFines, onNavigate, role, filt
         setDraftFilters(filters);
         setDatePreset(selectedPreset(filters));
     }, [filters]);
-    const resetFilters = () => { setDraftFilters(emptyFilters); setDatePreset("all"); };
-    const clearAndApply = () => { resetFilters(); onApplyFilters(emptyFilters); };
+    const resetFilters = () => {
+        setDraftFilters(emptyFilters);
+        setDatePreset("all");
+        onApplyFilters(emptyFilters);
+    };
     const remote = useFines(filters, records);
     const filtered = useMemo(() => filterFines(remote.rows, filters), [remote.rows, filters]);
     const filtersChanged = JSON.stringify(draftFilters) !== JSON.stringify(filters);
@@ -125,7 +128,7 @@ export function DashboardPage({ records, onNavigateFines, onNavigate, role, filt
 
         <div className="queue-banner"><div><strong>Pending validation queue</strong><p>{role === "Super User" ? "Review pending cases and record a reasoned status change." : "View pending cases. Status changes are reserved for Super Users."}</p></div><Button variant="secondary" onClick={() => onNavigateFines({ ...filters, status: "Pending" })}>{role === "Super User" ? "Review" : "View"} {pending.length} pending cases</Button></div>
 
-        {!filtered.length ? <Card><EmptyState action={<Button onClick={clearAndApply}>Clear filters</Button>}/></Card> : <div className="chart-grid">
+        {!filtered.length ? <Card><EmptyState action={<Button onClick={resetFilters}>Clear filters</Button>}/></Card> : <div className="chart-grid">
           <StatusDistribution records={filtered}/><FinanceSettlementChart records={filtered}/>
           <ValidationByAreaChart records={filtered} onSelect={sourceArea => onNavigateFines({ ...filters, sourceArea })}/>
           <ReasonsChart records={filtered} onSelect={reason => onNavigateFines({ ...filters, reasons: [reason] })}/>
