@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Activity, ChevronLeft, ChevronRight, FilterX, RefreshCw } from "lucide-react";
 import { api } from "../services/api.js";
 import { Button, Card, EmptyState, LoadingPage, Select } from "../components/ui.jsx";
 
@@ -8,26 +8,27 @@ const eventTypes = ["Validation", "Finance", "Comment", "DataEdit", "UserManagem
 const eventLabels = { Validation: "Validation", Finance: "Finance", Comment: "Comment", DataEdit: "Fine edit", UserManagement: "User management" };
 const dateTime = value => value ? new Date(value).toLocaleString() : "—";
 
-export function ActivityPage() {
+export function ActivityPage({ filters, onApplyFilters, onClearAllFilters }) {
     const [items, setItems] = useState([]);
     const [total, setTotal] = useState(0);
-    const [eventType, setEventType] = useState("");
-    const [fineId, setFineId] = useState("");
+    const [draftFilters, setDraftFilters] = useState(filters);
     const [page, setPage] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    useEffect(() => { setDraftFilters(filters); setPage(0); }, [filters]);
+
     const load = useCallback(async () => {
         setLoading(true); setError("");
         const params = new URLSearchParams({ offset: String(page * PAGE_SIZE), limit: String(PAGE_SIZE) });
-        if (eventType) params.set("eventType", eventType);
-        if (fineId.trim()) params.set("fineId", fineId.trim());
+        if (filters.eventType) params.set("eventType", filters.eventType);
+        if (filters.fineId.trim()) params.set("fineId", filters.fineId.trim());
         try {
             const result = await api(`/activity-events?${params}`);
             setItems(result.items || []); setTotal(result.total || 0);
         } catch (e) { setError(e.message || "Could not load activity events."); }
         finally { setLoading(false); }
-    }, [eventType, fineId, page]);
+    }, [filters.eventType, filters.fineId, page]);
 
     useEffect(() => { load(); }, [load]);
     const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -37,10 +38,12 @@ export function ActivityPage() {
       <Card className="records-card activity-card">
         <div className="activity-intro"><Activity size={18}/><p>Audit events from <strong>dbo.ActivityEvents</strong>, joined to user names from <strong>dbo.Users</strong>. Password hashes are never shown.</p></div>
         <div className="activity-filters">
-          <Select label="Event type" value={eventType} onChange={e => { setEventType(e.target.value); setPage(0); }}>
+          <Select label="Event type" value={draftFilters.eventType} onChange={e => setDraftFilters(f => ({ ...f, eventType: e.target.value }))}>
             <option value="">All event types</option>{eventTypes.map(type => <option key={type} value={type}>{eventLabels[type]}</option>)}
           </Select>
-          <label className="field"><span>Fine ID</span><input inputMode="numeric" value={fineId} onChange={e => { setFineId(e.target.value.replace(/\D/g, "")); setPage(0); }} placeholder="All fine IDs"/></label>
+          <label className="field"><span>Fine ID</span><input inputMode="numeric" value={draftFilters.fineId} onChange={e => setDraftFilters(f => ({ ...f, fineId: e.target.value.replace(/\D/g, "") }))} placeholder="All fine IDs"/></label>
+          <Button disabled={JSON.stringify(draftFilters) === JSON.stringify(filters)} onClick={() => { onApplyFilters(draftFilters); setPage(0); }}>Apply</Button>
+          <Button variant="ghost" onClick={onClearAllFilters}><FilterX size={15}/>Clear all</Button>
           <Button variant="secondary" onClick={load} disabled={loading}><RefreshCw size={15}/>Refresh</Button>
         </div>
         {error && <p role="alert" className="alert error">{error}</p>}

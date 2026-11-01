@@ -28,7 +28,7 @@ const selectedPreset = filters => {
     return "custom";
 };
 
-export function DashboardPage({ records, onNavigateFines, onNavigate, role, filters, onApplyFilters }) {
+export function DashboardPage({ records, onNavigateFines, onNavigate, role, filters, onApplyFilters, onClearAllFilters }) {
     const [draftFilters, setDraftFilters] = useState(filters);
     const [datePreset, setDatePreset] = useState(() => selectedPreset(filters));
     const [overview, setOverview] = useState(null);
@@ -41,7 +41,7 @@ export function DashboardPage({ records, onNavigateFines, onNavigate, role, filt
     const resetFilters = () => {
         setDraftFilters(emptyFilters);
         setDatePreset("all");
-        onApplyFilters(emptyFilters);
+        onClearAllFilters();
     };
     const remote = useFines(filters, records);
     const filtered = useMemo(() => filterFines(remote.rows, filters), [remote.rows, filters]);

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, Card, EmptyState, LoadingPage, Select, StatusBadge, } from "../components/ui.jsx";
 
 import { exactMoney, filterFines, shortDate } from "../utils/fines.js";
-export function FinesDetailsPage({ records, filters, onApplyFilters, onOpen, onExport, onRefresh, }) {
+export function FinesDetailsPage({ records, filters, onApplyFilters, onClearAllFilters, onOpen, onExport, onRefresh, }) {
     const [draftFilters, setDraftFilters] = useState(filters);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
@@ -32,7 +32,7 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onOpen, onE
     const clearFilters = () => {
         const cleared = { reasons: [] };
         setDraftFilters(cleared);
-        onApplyFilters(cleared);
+        onClearAllFilters();
         setPage(1);
     };
     const filtersChanged = JSON.stringify(draftFilters) !== JSON.stringify(filters);
