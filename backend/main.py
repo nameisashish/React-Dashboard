@@ -75,6 +75,9 @@ def exporter(user=Depends(current)):
     if app_role(user.role) not in ['Admin','Super User']: fail(403, 'unauthorized')
     return user
 
+def importer(user=Depends(current)):
+    fail(403, 'import-disabled')
+
 class Registration(BaseModel):
     fullName: str = Field(min_length=1, max_length=120)
     email: EmailStr
@@ -375,7 +378,7 @@ def review(fine_id: str, body: Decision, user=Depends(reviewer), db: DBSession=D
     db.commit(); db.refresh(fine); return output(fine)
 
 @app.post('/api/imports/validate')
-def import_excel(file: UploadFile=File(...), commit: bool=False, user=Depends(super_user), db: DBSession=Depends(get_db)):
+def import_excel(file: UploadFile=File(...), commit: bool=False, user=Depends(importer), db: DBSession=Depends(get_db)):
     """Validate the complete workbook before any inserts. Explicit commit is required."""
     if not file.filename or not file.filename.lower().endswith('.xlsx'): fail(422,'xlsx-required')
     content=file.file.read(5*1024*1024+1)

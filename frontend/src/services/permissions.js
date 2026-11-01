@@ -1,6 +1,6 @@
 export const rolePermissions = {
     Admin: ["dashboard:read", "fine:read", "fine:export", "users:read", "users:approve"],
-    "Super User": ["dashboard:read", "fine:read", "fine:export", "fine:review", "dataset:import", "activity:read"],
+    "Super User": ["dashboard:read", "fine:read", "fine:export", "fine:review", "activity:read"],
     Viewer: ["dashboard:read", "fine:read"],
 };
 export const can = (role, permission) => Boolean(rolePermissions[role]?.includes(permission));

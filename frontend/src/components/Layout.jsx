@@ -30,7 +30,7 @@ export function Layout({ children, page, user, onNavigate, onLogout, }) {
             document.removeEventListener("keydown", closeEscape);
         };
     }, [profileOpen]);
-    const accessLevel = user.role === "Admin" ? "Executive dashboard, fine reports, exports, and user approvals." : user.role === "Super User" ? "Operational fine review, dataset imports, exports, and activity log. Invalid fines are locked." : "Read-only access to the dashboard and fine records.";
+    const accessLevel = user.role === "Admin" ? "Executive dashboard, fine reports, exports, and user approvals." : user.role === "Super User" ? "Operational fine review, exports, and activity log. Invalid fines are locked." : "Read-only access to the dashboard and fine records.";
     return (<div className="app-shell">
       <aside className={menu ? "sidebar open" : "sidebar"}>
         <div className="brand">
