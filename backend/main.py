@@ -71,6 +71,10 @@ def super_user(user=Depends(current)):
 def reviewer(user=Depends(current)):
     return super_user(user)
 
+def activity_viewer(user=Depends(current)):
+    if app_role(user.role) not in ['Admin', 'Super User']: fail(403, 'unauthorized')
+    return user
+
 def exporter(user=Depends(current)):
     if app_role(user.role) not in ['Admin','Super User']: fail(403, 'unauthorized')
     return user
@@ -81,7 +85,7 @@ def importer(user=Depends(current)):
 class Registration(BaseModel):
     fullName: str = Field(min_length=1, max_length=120)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: Optional[str] = Field(default=None, min_length=8, max_length=128)
     requestedRole: Literal['Super User','Viewer'] = 'Viewer'
     @field_validator('fullName')
     @classmethod
@@ -105,11 +109,14 @@ def database_health(user=Depends(admin), db: DBSession=Depends(get_db)):
 
 @app.post('/api/auth/signup', status_code=201)
 def signup(body: Registration, db: DBSession=Depends(get_db)):
+    # The current local sign-in flow is passwordless. Keep the required DB hash
+    # column populated with an unshared random hash when signup has no password.
+    password_hash = hasher.hash(body.password or secrets.token_urlsafe(32))
     if IS_SQLSERVER:
         stamp = datetime.now(timezone.utc).replace(tzinfo=None)
-        user = User(full_name=body.fullName, email=str(body.email).lower(), password_hash=hasher.hash(body.password), role='User', requested_role=db_role(body.requestedRole), status='Pending', is_active=False, registered_at=stamp, updated_at=stamp)
+        user = User(full_name=body.fullName, email=str(body.email).lower(), password_hash=password_hash, role='User', requested_role=db_role(body.requestedRole), status='Pending', is_active=False, registered_at=stamp, updated_at=stamp)
     else:
-        user = User(id=uid(), full_name=body.fullName, email=str(body.email).lower(), password_hash=hasher.hash(body.password), role=body.requestedRole, requested_role=body.requestedRole, status='Pending Approval', registered_at=now())
+        user = User(id=uid(), full_name=body.fullName, email=str(body.email).lower(), password_hash=password_hash, role=body.requestedRole, requested_role=body.requestedRole, status='Pending Approval', registered_at=now())
     db.add(user)
     try: db.commit()
     except IntegrityError:
@@ -196,6 +203,7 @@ class FineInput(BaseModel):
     fineDate: date
     sourceArea: Source
     orderReference: str = Field(default='', max_length=40 if IS_SQLSERVER else 120)
+    requestComment: str = Field(default='', max_length=1000)
     currencyCode: Literal['USD'] = 'USD'
     @field_validator('customerId', 'reasonCategory')
     @classmethod
@@ -230,19 +238,21 @@ def output(fine):
         }
     return dict(fine.data, fineId=fine.id, status=fine.status, fineAmount=float(fine.amount), version=fine.version)
 
-def make_fine(body):
+def make_fine(body, status=None):
+    fine_status = status or body.status
     if IS_SQLSERVER:
         stamp = max(datetime.now(timezone.utc).replace(tzinfo=None), datetime.combine(body.fineDate, datetime.min.time()))
         ref = body.orderReference.strip() or f"APP-{uuid4().hex[:16]}"
         invoice = f"INV-{uuid4().hex[:16]}"
         return Fine(customer_id=body.customerId.strip(), customer_name=body.customerName.strip() or 'Unknown customer',
                     order_id=ref, invoice_id=invoice, fine_date=body.fineDate, amount=body.fineAmount,
-                    reason=body.reasonCategory, source=body.sourceArea, status=body.status,
+                    reason=body.reasonCategory, source=body.sourceArea, status=fine_status,
+                    evidence_notes=body.requestComment.strip() or None,
                     invoice_amount=body.fineAmount, amount_received=Decimal('0.00'),
                     finance_status='Unpaid', updated_at=stamp)
     data=body.model_dump(mode='json')
     data.update(createdAt=now(), updatedAt=now())
-    return Fine(id=uid(), customer_id=body.customerId, amount=body.fineAmount, status=body.status, fine_date=body.fineDate.isoformat(), source=body.sourceArea, version=1, data=data)
+    return Fine(id=uid(), customer_id=body.customerId, amount=body.fineAmount, status=fine_status, fine_date=body.fineDate.isoformat(), source=body.sourceArea, version=1, data=data)
 
 def filtered(db, status=None, customerId=None, sourceArea=None, fromDate=None, toDate=None, reason=None, search=None):
     if fromDate and toDate and fromDate > toDate: fail(422, 'invalid-date-range')
@@ -304,7 +314,7 @@ def dashboard(user=Depends(current), db: DBSession=Depends(get_db)):
     return result
 
 @app.get('/api/activity-events')
-def activity_events(offset: int=Query(0,ge=0), limit: int=Query(25,ge=1,le=100), eventType: Optional[Literal['Validation','Finance','Comment','DataEdit','UserManagement']]=None, fineId: Optional[str]=None, user=Depends(reviewer), db: DBSession=Depends(get_db)):
+def activity_events(offset: int=Query(0,ge=0), limit: int=Query(25,ge=1,le=100), eventType: Optional[Literal['Validation','Finance','Comment','DataEdit','UserManagement']]=None, fineId: Optional[str]=None, user=Depends(activity_viewer), db: DBSession=Depends(get_db)):
     if not IS_SQLSERVER: return {'items':[],'total':0,'offset':offset,'limit':limit}
     query=select(ActivityEvent)
     count_query=select(func.count(ActivityEvent.id))
@@ -324,16 +334,29 @@ def activity_events(offset: int=Query(0,ge=0), limit: int=Query(25,ge=1,le=100),
     return {'items':items,'total':total,'offset':offset,'limit':limit}
 
 @app.post('/api/fines',status_code=201)
-def create(body: FineInput, user=Depends(super_user), db: DBSession=Depends(get_db)):
-    fine=make_fine(body); db.add(fine); db.commit(); db.refresh(fine); return output(fine)
+def create(body: FineInput, user=Depends(current), db: DBSession=Depends(get_db)):
+    role = app_role(user.role)
+    if role not in ['Viewer', 'Super User']: fail(403, 'unauthorized')
+    is_user_request = role == 'Viewer'
+    if is_user_request and not body.requestComment.strip(): fail(422, 'request-comment-required')
+    fine=make_fine(body, status='Pending' if is_user_request else None)
+    db.add(fine)
+    if IS_SQLSERVER and is_user_request:
+        db.flush()
+        db.add(ActivityEvent(fine_id=fine.id, target_user_id=None, actor_user_id=user.id,
+                             event_type='Comment', field_name=None, old_value=None,
+                             new_value=None, comment=body.requestComment.strip(),
+                             created_at=fine.updated_at))
+    db.commit(); db.refresh(fine); return output(fine)
 
 @app.get('/api/fines/{fine_id}/reviews')
 def reviews(fine_id: str, user=Depends(current), db: DBSession=Depends(get_db)):
     fine_key = int(fine_id) if IS_SQLSERVER and fine_id.isdigit() else fine_id
     if not db.get(Fine,fine_key): fail(404,'not-found')
     if IS_SQLSERVER:
-        events = db.scalars(select(ActivityEvent).where(ActivityEvent.fine_id==fine_key, ActivityEvent.event_type=='Validation').order_by(ActivityEvent.created_at.desc()))
-        return [{'reviewId':e.id,'fineId':e.fine_id,'oldStatus':e.old_value,'newStatus':e.new_value,
+        events = db.scalars(select(ActivityEvent).where(ActivityEvent.fine_id==fine_key,
+                                ((ActivityEvent.event_type=='Validation') | (ActivityEvent.event_type=='Comment'))).order_by(ActivityEvent.created_at.desc()))
+        return [{'reviewId':e.id,'fineId':e.fine_id,'oldStatus':e.old_value or ('Request submitted' if e.event_type=='Comment' else None),'newStatus':e.new_value,
                  'reviewerId':e.actor_user_id,'reviewerName':(db.get(User,e.actor_user_id).full_name if db.get(User,e.actor_user_id) else 'Unknown reviewer'),
                  'comment':e.comment,'reviewedAt':dt_value(e.created_at)} for e in events]
     return sorted([r.data for r in db.scalars(select(Review).where(Review.fine_id==fine_key))],key=lambda r:r['reviewedAt'],reverse=True)

@@ -1,5 +1,5 @@
 export const rolePermissions = {
-    Admin: ["dashboard:read", "fine:read", "fine:export", "users:read", "users:approve"],
+    Admin: ["dashboard:read", "fine:read", "fine:export", "users:read", "users:approve", "activity:read"],
     "Super User": ["dashboard:read", "fine:read", "fine:export", "fine:review", "activity:read"],
     Viewer: ["dashboard:read", "fine:read"],
 };

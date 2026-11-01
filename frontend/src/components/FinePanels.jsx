@@ -94,10 +94,10 @@ export function FineDrawer({ fine, role, history, historyError, onClose, onRevie
           </h3>
           {historyError ? <p role="alert" className="alert error">{historyError}</p> : !history.length ? (<div className="no-history">No manual review recorded.</div>) : (<div className="timeline">
               {history.map((item) => (<div key={item.reviewId}>
-                  <span className={`timeline-dot ${item.newStatus.toLowerCase()}`}/>
+                  <span className={`timeline-dot ${item.newStatus?.toLowerCase() || "comment"}`}/>
                   <div>
                     <strong>
-                      {item.oldStatus} → {item.newStatus}
+                      {item.newStatus ? `${item.oldStatus} → ${item.newStatus}` : "Request comment"}
                     </strong>
                     <span>
                       {dateTime(item.reviewedAt)} · {item.reviewerName}
@@ -180,6 +180,7 @@ export function ReviewModal({ fine, role, onClose, onSave, }) {
           <span>Current status</span>
           <StatusBadge status={fine.status}/>
         </div>
+        {fine.reasonDescription && <div className="alert info request-comment"><strong>User request comment:</strong> {fine.reasonDescription}</div>}
         {(apiError || errors.permission) && (<div className="alert error">
             <AlertTriangle size={18}/>
             <span>{apiError || errors.permission}</span>
@@ -188,22 +189,22 @@ export function ReviewModal({ fine, role, onClose, onSave, }) {
           <legend>
             Review Decision <span>*</span>
           </legend>
-          <p>This fine is pending review. Choose the final status.</p>
+          <p>This fine is pending review. Approve or reject it. To keep it pending, close without saving.</p>
           <div>
             <label className={decision === "Valid" ? "selected valid" : ""}>
               <input type="radio" name="decision" value="Valid" checked={decision === "Valid"} onChange={() => setDecision("Valid")}/>
               <CheckCircle2 />
               <span>
-                <strong>Valid</strong>
-                <small>Confirm the fine classification as valid.</small>
+                <strong>Approve</strong>
+                <small>Approve the request. The stored fine status will be Valid.</small>
               </span>
             </label>
             <label className={decision === "Invalid" ? "selected invalid" : ""}>
               <input type="radio" name="decision" value="Invalid" checked={decision === "Invalid"} onChange={() => setDecision("Invalid")}/>
               <AlertTriangle />
               <span>
-                <strong>Invalid</strong>
-                <small>A reason is required to mark this fine invalid.</small>
+                <strong>Reject</strong>
+                <small>Reject the request. A reason is required; the stored status will be Invalid.</small>
               </span>
             </label>
           </div>
@@ -225,7 +226,7 @@ export function ReviewModal({ fine, role, onClose, onSave, }) {
         {decision && comment.trim() && !errors.comment && (<div className="confirmation">
             <strong>Decision summary</strong>
             <p>
-              You are about to change this fine from {fine.status} to{" "}
+              You are about to {decision === "Valid" ? "approve" : "reject"} this fine request from {fine.status} to{" "}
               <b>{decision}</b>. This decision and your comment will be recorded
               in review history.
             </p>

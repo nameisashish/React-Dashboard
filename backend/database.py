@@ -1,4 +1,8 @@
-"""SQLite for local development; SQL Server through DATABASE_URL or DB_* settings."""
+"""SQL Server connection used by the application.
+
+The application intentionally fails at startup when SQL Server is not configured;
+it must never create a local SQLite database as a fallback.
+"""
 import os
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
@@ -7,7 +11,10 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 url = os.getenv('DATABASE_URL')
-if not url and os.getenv('DB_SERVER'):
+if url:
+    if not url.lower().startswith(('mssql://', 'mssql+pyodbc://')):
+        raise RuntimeError('DATABASE_URL must point to SQL Server (mssql or mssql+pyodbc)')
+elif os.getenv('DB_SERVER'):
     required = ['DB_SERVER', 'DB_NAME']
     if any(not os.getenv(key) for key in required):
         raise RuntimeError('Set DB_SERVER and DB_NAME for SQL Server')
@@ -24,8 +31,10 @@ if not url and os.getenv('DB_SERVER'):
     else:
         raise RuntimeError("DB_AUTH must be 'windows' or 'sql'")
     url = 'mssql+pyodbc:///?odbc_connect=' + quote_plus(connection)
-url = url or 'sqlite:///./fines.db'
-engine = create_engine(url, pool_pre_ping=True, connect_args={'check_same_thread': False} if url.startswith('sqlite') else {})
+else:
+    raise RuntimeError('SQL Server is not configured. Set DATABASE_URL or DB_SERVER and DB_NAME.')
+
+engine = create_engine(url, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 Base = declarative_base()
 def get_db():

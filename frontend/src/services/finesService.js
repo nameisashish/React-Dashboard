@@ -9,6 +9,7 @@ export const finesService = {
     return api(`/fines?${query}`);
   },
   refresh: () => api('/fines'),
+  createRequest: request => api('/fines', { method: 'POST', body: JSON.stringify(request) }),
   reviews: id => api(`/fines/${id}/reviews`),
   review: (id, request) => api(`/fines/${id}/reviews`, { method: 'POST', body: JSON.stringify(request) }),
   export: ids => api('/exports/fines', { method: 'POST', body: JSON.stringify({ ids }) }),

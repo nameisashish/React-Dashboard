@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Activity, ChevronLeft, ChevronRight, FilterX, RefreshCw } from "lucide-react";
+import { Activity, ChevronLeft, ChevronRight, FilterX } from "lucide-react";
 import { api } from "../services/api.js";
 import { Button, Card, EmptyState, LoadingPage, Select } from "../components/ui.jsx";
 
@@ -18,19 +18,25 @@ export function ActivityPage({ filters, onApplyFilters, onClearAllFilters }) {
 
     useEffect(() => { setDraftFilters(filters); setPage(0); }, [filters]);
 
-    const load = useCallback(async () => {
-        setLoading(true); setError("");
+    const load = useCallback(async (silent = false) => {
+        if (!silent) { setLoading(true); setError(""); }
         const params = new URLSearchParams({ offset: String(page * PAGE_SIZE), limit: String(PAGE_SIZE) });
         if (filters.eventType) params.set("eventType", filters.eventType);
         if (filters.fineId.trim()) params.set("fineId", filters.fineId.trim());
         try {
             const result = await api(`/activity-events?${params}`);
             setItems(result.items || []); setTotal(result.total || 0);
-        } catch (e) { setError(e.message || "Could not load activity events."); }
-        finally { setLoading(false); }
+        } catch (e) { if (!silent) setError(e.message || "Could not load activity events."); }
+        finally { if (!silent) setLoading(false); }
     }, [filters.eventType, filters.fineId, page]);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        load();
+        const poll = () => { if (document.visibilityState === "visible") load(true); };
+        const timer = window.setInterval(poll, 30_000);
+        document.addEventListener("visibilitychange", poll);
+        return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", poll); };
+    }, [load]);
     const maxPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
     return <>
@@ -44,7 +50,6 @@ export function ActivityPage({ filters, onApplyFilters, onClearAllFilters }) {
           <label className="field"><span>Fine ID</span><input inputMode="numeric" value={draftFilters.fineId} onChange={e => setDraftFilters(f => ({ ...f, fineId: e.target.value.replace(/\D/g, "") }))} placeholder="All fine IDs"/></label>
           <Button disabled={JSON.stringify(draftFilters) === JSON.stringify(filters)} onClick={() => { onApplyFilters(draftFilters); setPage(0); }}>Apply</Button>
           <Button variant="ghost" onClick={onClearAllFilters}><FilterX size={15}/>Clear all</Button>
-          <Button variant="secondary" onClick={load} disabled={loading}><RefreshCw size={15}/>Refresh</Button>
         </div>
         {error && <p role="alert" className="alert error">{error}</p>}
         <div className="table-toolbar"><span>{loading ? "Loading activity…" : `${total.toLocaleString()} matching events`}</span><span>25 rows per page</span></div>

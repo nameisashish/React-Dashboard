@@ -1,14 +1,10 @@
-import { CheckCircle2, Eye, EyeOff, LockKeyhole, Mail, User, } from "lucide-react";
+import { CheckCircle2, Mail, User, } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../components/ui.jsx";
 import { authService } from "../services/authService.js";
 export function SignUpPage({ onSignIn, }) {
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirm, setShowConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const [failure, setFailure] = useState("");
@@ -21,21 +17,13 @@ export function SignUpPage({ onSignIn, }) {
             next.fullName = "Enter your full name.";
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
             next.email = "Enter a valid work email.";
-        if (!password)
-            next.password = "Create a password.";
-        else if (password.length < 8)
-            next.password = "Use at least 8 characters.";
-        if (!confirmPassword)
-            next.confirmPassword = "Confirm your password.";
-        else if (password !== confirmPassword)
-            next.confirmPassword = "Passwords must match.";
         setErrors(next);
         setFailure("");
         if (Object.keys(next).length)
             return;
         setLoading(true);
         try {
-            await authService.register(fullName, email, password, requestedRole);
+            await authService.register(fullName, email, requestedRole);
             setSubmitted(true);
         }
         catch (error) {
@@ -70,14 +58,7 @@ export function SignUpPage({ onSignIn, }) {
           <AuthField label="Full Name" icon={<User size={18}/>} value={fullName} onChange={setFullName} placeholder="Enter your full name" error={errors.fullName}/>
           <label className="form-field"><span>Account Type</span><div><select value={requestedRole} onChange={e => setRequestedRole(e.target.value)}><option value="Viewer">User</option><option>Super User</option></select></div><em>Your account must be approved by an administrator before you can sign in.</em></label>
           <AuthField label="Work Email" icon={<Mail size={18}/>} type="email" value={email} onChange={setEmail} placeholder="Enter your work email" error={errors.email}/>
-          <AuthField label="Password" icon={<LockKeyhole size={18}/>} type={showPassword ? "text" : "password"} value={password} onChange={setPassword} placeholder="Create a password" error={errors.password} action={<button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>
-                {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
-              </button>} help="Use at least 8 characters."/>
-          <AuthField label="Confirm Password" icon={<LockKeyhole size={18}/>} type={showConfirm ? "text" : "password"} value={confirmPassword} onChange={setConfirmPassword} placeholder="Re-enter your password" error={errors.confirmPassword} action={<button type="button" onClick={() => setShowConfirm(!showConfirm)} aria-label={showConfirm
-                    ? "Hide confirmed password"
-                    : "Show confirmed password"}>
-                {showConfirm ? <EyeOff size={18}/> : <Eye size={18}/>}
-              </button>}/>
+          <p className="auth-hint">No password is needed. Once your account is approved, sign in with your work email.</p>
           <Button type="submit" className="full" disabled={loading}>
             {loading ? "Creating account…" : "Create Account"}
           </Button>

@@ -5,7 +5,7 @@ export const authService = {
     setToken(result.token);
     return result.user;
   },
-  register: (fullName, email, password, requestedRole) => api('/auth/signup', { method: 'POST', body: JSON.stringify({ fullName, email: email.trim(), password, requestedRole }) }),
+  register: (fullName, email, requestedRole) => api('/auth/signup', { method: 'POST', body: JSON.stringify({ fullName, email: email.trim(), requestedRole }) }),
   requests: () => api('/users/requests'),
   decide: (id, decision, assignedRole = 'Viewer') => api(`/users/${id}/decision`, { method: 'POST', body: JSON.stringify({ decision, assignedRole }) }),
   me: () => api('/auth/me'),

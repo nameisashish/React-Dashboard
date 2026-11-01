@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, JSON, Numeric, Integer, Date, DateTime, Boolean, BigInteger, LargeBinary
+from sqlalchemy import Column, String, Text, JSON, Numeric, Integer, Date, DateTime, Boolean, BigInteger, LargeBinary, FetchedValue
 from sqlalchemy.dialects.mssql import TIMESTAMP
 from database import Base, engine
 
@@ -72,7 +72,8 @@ if engine.dialect.name == 'mssql':
         payment_verified_at = Column(DateTime)
         finance_status = Column(String(30), nullable=False)
         updated_at = Column(DateTime, nullable=False)
-        row_version = Column('row_version', TIMESTAMP(convert_int=False), nullable=False)
+        row_version = Column('row_version', TIMESTAMP(convert_int=False), nullable=False,
+                             server_default=FetchedValue(), server_onupdate=FetchedValue())
 
         @property
         def version(self):

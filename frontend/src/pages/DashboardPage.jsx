@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowRight, CircleDollarSign, Clock3, FileText, RotateCcw, ShieldCheck, Activity } from "lucide-react";
+import { AlertCircle, ArrowRight, CircleDollarSign, Clock3, FileText, FilterX, ShieldCheck, Activity } from "lucide-react";
 import { ReasonsChart, FinanceSettlementChart, StatusDistribution, TrendChart, ValidationByAreaChart } from "../components/charts.jsx";
-import { Button, Card, EmptyState, LoadingPage, Select } from "../components/ui.jsx";
-import { finesService } from "../services/finesService.js";
-import { useFines } from "../services/useFines.js";
+import { Button, Card, EmptyState, Select } from "../components/ui.jsx";
 import { filterFines, money } from "../utils/fines.js";
 
 const emptyFilters = { status: undefined, customerId: undefined, sourceArea: undefined, reasons: [] };
@@ -28,12 +26,9 @@ const selectedPreset = filters => {
     return "custom";
 };
 
-export function DashboardPage({ records, onNavigateFines, onNavigate, role, filters, onApplyFilters, onClearAllFilters }) {
+export function DashboardPage({ records, onNavigateFines, onNavigate, role, filters, onApplyFilters, onClearAllFilters, overview, overviewLoading, overviewError }) {
     const [draftFilters, setDraftFilters] = useState(filters);
     const [datePreset, setDatePreset] = useState(() => selectedPreset(filters));
-    const [overview, setOverview] = useState(null);
-    const [overviewError, setOverviewError] = useState("");
-    const [overviewLoading, setOverviewLoading] = useState(true);
     useEffect(() => {
         setDraftFilters(filters);
         setDatePreset(selectedPreset(filters));
@@ -43,22 +38,8 @@ export function DashboardPage({ records, onNavigateFines, onNavigate, role, filt
         setDatePreset("all");
         onClearAllFilters();
     };
-    const remote = useFines(filters, records);
-    const filtered = useMemo(() => filterFines(remote.rows, filters), [remote.rows, filters]);
+    const filtered = useMemo(() => filterFines(records, filters), [records, filters]);
     const filtersChanged = JSON.stringify(draftFilters) !== JSON.stringify(filters);
-
-    useEffect(() => {
-        let active = true;
-        if (role === "Viewer") {
-            setOverviewLoading(false);
-            return () => { active = false; };
-        }
-        setOverviewLoading(true); setOverviewError("");
-        finesService.summary().then(data => { if (active) setOverview(data); })
-            .catch(error => { if (active) setOverviewError(error.message || "Overview unavailable."); })
-            .finally(() => { if (active) setOverviewLoading(false); });
-        return () => { active = false; };
-    }, [role]);
 
     const pending = filtered.filter(f => f.status === "Pending");
     const totalFineAmount = filtered.reduce((sum, f) => sum + Number(f.fineAmount || 0), 0);
@@ -81,7 +62,6 @@ export function DashboardPage({ records, onNavigateFines, onNavigate, role, filt
     const updatePreset = preset => setDraftFilters(f => ({ ...f, ...presetRange(preset) }));
 
     return <>
-      {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. <Button onClick={remote.retry}>Retry</Button></p>}
       <Card className="filter-bar sticky-filters">
         <Select label="Fine date" value={datePreset} onChange={e => { setDatePreset(e.target.value); if (e.target.value !== "custom") updatePreset(e.target.value); }}>
           <option value="all">All dates</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="12">Last 12 months</option><option value="year">This year</option><option value="custom">Custom range</option>
@@ -100,11 +80,10 @@ export function DashboardPage({ records, onNavigateFines, onNavigate, role, filt
         <Select label="Fine reason" value={draftFilters.reasons[0] ?? ""} onChange={e => setDraftFilters({ ...draftFilters, reasons: e.target.value ? [e.target.value] : [] })}>
           <option value="">All reasons</option>{reasons.map(reason => <option key={reason}>{reason}</option>)}
         </Select>
-        <Button variant="ghost" className="reset" onClick={resetFilters}><RotateCcw size={16}/>Reset</Button>
+        <Button variant="ghost" className="reset" onClick={resetFilters}><FilterX size={16}/>Clear all</Button>
         <Button className="apply-filters" disabled={!filtersChanged} onClick={() => onApplyFilters(draftFilters)}>Apply</Button>
       </Card>
 
-      {remote.loading ? <LoadingPage/> : remote.error ? null : <>
         <div className="dashboard-scope">Showing {filtered.length.toLocaleString()} of {records.length.toLocaleString()} fine records. Fine and invoice measures use the selected filters.{role === "Super User" ? " Activity and account totals below cover the full SQL tables." : role === "Admin" ? " Account totals below cover the full Users table." : ""}</div>
         <div className="kpi-grid">
           <Kpi icon={<FileText />} label="Fine records" value={filtered.length.toLocaleString()} detail="All matching SQL Server fine rows"/>
@@ -137,7 +116,6 @@ export function DashboardPage({ records, onNavigateFines, onNavigate, role, filt
 
         {role !== "Viewer" && overviewError && <p role="alert" className="alert error">{role === "Admin" ? "User" : "Activity and user"} summaries could not be loaded: {overviewError}</p>}
         {role !== "Viewer" && (overviewLoading ? <p role="status" className="dashboard-loading">Loading {role === "Admin" ? "user" : "activity and user"} summaries…</p> : overview && <DatabaseOverview data={overview} role={role} onNavigate={onNavigate}/>)}
-      </>}
     </>;
 }
 

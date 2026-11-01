@@ -1,10 +1,10 @@
-import { useFines } from "../services/useFines.js";
-import { ArrowDown, ArrowUp, Download, FilterX, RefreshCw, } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, FilterX, } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, EmptyState, LoadingPage, Select, StatusBadge, } from "../components/ui.jsx";
+import { Button, Card, EmptyState, Select, StatusBadge, } from "../components/ui.jsx";
 
 import { exactMoney, filterFines, shortDate } from "../utils/fines.js";
-export function FinesDetailsPage({ records, filters, onApplyFilters, onClearAllFilters, onOpen, onExport, onRefresh, }) {
+import { canReviewFine } from "../services/permissions.js";
+export function FinesDetailsPage({ role, records, filters, onApplyFilters, onClearAllFilters, onOpen, onExport, onRequest, }) {
     const [draftFilters, setDraftFilters] = useState(filters);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
@@ -15,13 +15,12 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onClearAllF
     useEffect(() => { setDraftFilters(filters); setPage(1); }, [filters]);
     const reasons = [...new Set(records.map(f => f.reasonCategory))];
     const customers = Array.from(new Map(records.map((f) => [f.customerId, f.customerName])));
-    const remote = useFines(filters, records);
-    const filtered = useMemo(() => filterFines(remote.rows, filters).sort((a, b) => {
+    const filtered = useMemo(() => filterFines(records, filters).sort((a, b) => {
         const result = sort.field === "fineAmount"
             ? a.fineAmount - b.fineAmount
             : a.fineDate.localeCompare(b.fineDate);
         return sort.direction === "asc" ? result : -result;
-    }), [remote.rows, filters, sort]);
+    }), [records, filters, sort]);
     const maxPage = Math.max(1, Math.ceil(filtered.length / pageSize));
     const currentPage = Math.min(page, maxPage);
     const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -42,16 +41,11 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onClearAllF
     }));
     const SortIcon = ({ field }) => sort.field === field ? (sort.direction === "asc" ? (<ArrowUp size={13}/>) : (<ArrowDown size={13}/>)) : null;
     return (<>
-      {remote.loading && <p role="status">Loading records…</p>}
-      {remote.error && <p role="alert" className="alert error">Unable to load records: {remote.error}. <Button onClick={remote.retry}>Retry</Button></p>}
       <Card className="records-card sticky-filters records-filters">
         <div className="records-search">
           <div>
-            <Button variant="secondary" onClick={onRefresh}>
-              <RefreshCw size={16}/>
-              Refresh
-            </Button>
-            <Button disabled={remote.loading || !!remote.error || !filtered.length} onClick={() => onExport(filtered, filters)}>
+            {role === "Viewer" && <Button variant="secondary" onClick={onRequest}>Submit Fine Request</Button>}
+            <Button disabled={!filtered.length} onClick={() => onExport(filtered, filters)}>
               <Download size={16}/>
               Export to Excel
             </Button>
@@ -111,7 +105,7 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onClearAllF
       </Card>
       <Card className="records-card table-card">
         <div className="table-toolbar">
-          <span>{remote.loading ? "Loading results…" : remote.error ? "Results unavailable" : `${filtered.length.toLocaleString()} results`}</span>
+          <span>{filtered.length.toLocaleString()} results</span>
           <label>
             Rows per page{" "}
             <select value={pageSize} onChange={(e) => {
@@ -124,7 +118,7 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onClearAllF
             </select>
           </label>
         </div>
-        {remote.loading ? <LoadingPage/> : remote.error ? <p className="empty-state">Use Retry to load records.</p> : !filtered.length ? (<EmptyState action={<Button onClick={clearFilters}>
+        {!filtered.length ? (<EmptyState action={<Button onClick={clearFilters}>
                 Clear filters
               </Button>}/>) : (<div className="table-wrap main-table">
             <table>
@@ -171,8 +165,10 @@ export function FinesDetailsPage({ records, filters, onApplyFilters, onClearAllF
                         {fine.reasonCategory}
                       </span>
                     </td>
-                    <td>
+                    <td className="fine-status-cell">
                       <StatusBadge status={fine.status}/>
+                      {role === "Super User" && canReviewFine(role, fine.status) && <Button variant="secondary" className="review-row-button" onClick={() => onOpen(fine, true)}>Review</Button>}
+                      {(role === "Super User" || role === "Admin") && (fine.status?.toLowerCase() === "pending" ? fine.reasonDescription : fine.lastReviewComment) && <small className="review-reason" title={fine.status?.toLowerCase() === "pending" ? fine.reasonDescription : fine.lastReviewComment}>{fine.status?.toLowerCase() === "pending" ? fine.reasonDescription : fine.lastReviewComment}</small>}
                     </td>
                     <td>{shortDate(fine.updatedAt)}</td>
                   </tr>))}

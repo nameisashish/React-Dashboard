@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { authService } from '../services/authService.js';
 import { Button, Card, LoadingPage } from '../components/ui.jsx';
 
@@ -10,12 +10,19 @@ export function UsersPage() {
   const [assigned, setAssigned] = useState({});
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  async function load() {
-    setBusy(true); setError('');
-    try { setUsers(await authService.requests()); } catch (e) { setError(e.message); }
-    finally { setBusy(false); }
-  }
-  useEffect(() => { load(); }, []);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) { setBusy(true); setError(''); }
+    try { setUsers(await authService.requests()); }
+    catch (e) { if (!silent) setError(e.message); }
+    finally { if (!silent) setBusy(false); }
+  }, []);
+  useEffect(() => {
+    load();
+    const poll = () => { if (document.visibilityState === 'visible') load(true); };
+    const timer = window.setInterval(poll, 30_000);
+    document.addEventListener('visibilitychange', poll);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', poll); };
+  }, [load]);
   async function decide(id, decision) {
     setBusy(true); setError('');
     try { await authService.decide(id, decision, assigned[id] || 'Viewer'); await load(); }
@@ -23,7 +30,7 @@ export function UsersPage() {
   }
   const pending = users.filter(user => user.status === 'Pending Approval').length;
   return <><h1 className="page-title">User Management</h1><Card className="records-card user-table-card">
-    <div className="table-toolbar"><div><p>Account and approval fields from dbo.Users. Password hashes are excluded.</p><span>{users.length.toLocaleString()} accounts · {pending.toLocaleString()} pending approval</span></div><Button disabled={busy} variant="secondary" onClick={load}>Refresh</Button></div>
+    <div className="table-toolbar"><div><p>Account and approval fields from dbo.Users. Password hashes are excluded.</p><span>{users.length.toLocaleString()} accounts · {pending.toLocaleString()} pending approval</span></div></div>
     {error && <p role="alert" className="alert error">{error}</p>}
     {busy && <p role="status">Loading or updating accounts…</p>}
     {busy && !users.length ? <LoadingPage/> : <div className="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Requested role</th><th>Assigned role</th><th>Approval</th><th>Access</th><th>Created</th><th>Updated</th><th>Reviewed by</th><th>Reviewed at</th><th>Review note</th><th>Actions</th></tr></thead><tbody>
